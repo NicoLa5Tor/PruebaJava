@@ -29,6 +29,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       LOGTO_ISSUER: ${LOGTO_ISSUER}
       LOGTO_APP_ID: ${LOGTO_APP_ID}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-nico.rodriguez.torres.71@gmail.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+      SEED_DEMO_USERS: ${SEED_DEMO_USERS:-true}
     ports:
       - "${SERVER_PORT}:8080"
     depends_on:

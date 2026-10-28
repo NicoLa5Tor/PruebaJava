@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://www.ehcache.org/v3">
+
+    <!-- Single loan, read by the applicant polling its status and by admins opening a request. -->
+    <cache alias="loanById">
+        <key-type>java.lang.Object</key-type>
+        <value-type>java.lang.Object</value-type>
+        <expiry>
+            <ttl unit="minutes">10</ttl>
+        </expiry>
+        <heap unit="entries">1000</heap>
+    </cache>
+
+    <!-- "Mis préstamos": the list each applicant reloads to check whether a request was reviewed. -->
+    <cache alias="loansByApplicant">
+        <key-type>java.lang.Object</key-type>
+        <value-type>java.lang.Object</value-type>
+        <expiry>
+            <ttl unit="minutes">5</ttl>
+        </expiry>
+        <heap unit="entries">500</heap>
+    </cache>
+</config>
