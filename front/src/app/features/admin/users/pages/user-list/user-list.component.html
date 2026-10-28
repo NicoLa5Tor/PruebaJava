@@ -81,7 +81,7 @@
               </td>
               <td>
                 @for (role of user.roles; track role) {
-                  <span class="badge rounded-pill me-1" [class]="role === 'ADMIN' ? 'text-bg-primary' : 'text-bg-secondary'">
+                  <span class="badge rounded-pill me-1" [class]="role === 'SUPER_ADMIN' ? 'text-bg-dark' : role === 'ADMIN' ? 'text-bg-primary' : 'text-bg-secondary'">
                     {{ roleLabels[role] }}
                   </span>
                 }
@@ -181,8 +181,8 @@
         <div class="modal-body">
           <p class="mb-2">¿Seguro que quieres eliminar a <strong>{{ displayNameOf(user) }}</strong>?</p>
           <p class="small text-body-secondary mb-0">
-            Se cerrarán sus sesiones y no se puede deshacer. Si vuelve a iniciar sesión con Logto se le creará una cuenta
-            nueva; para bloquear el acceso usa "Desactivar".
+            Se cerrarán sus sesiones y no se puede deshacer. Si tiene préstamos no se podrá eliminar: para bloquear el
+            acceso usa "Desactivar".
           </p>
         </div>
         <div class="modal-footer">

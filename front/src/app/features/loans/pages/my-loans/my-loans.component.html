@@ -1,0 +1,186 @@
+<main class="container py-4 py-lg-5" style="max-width: 1080px">
+  <header class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
+    <div>
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Préstamos</p>
+      <h1 class="h3 fw-bold mb-0">Bienvenido, {{ firstName() }}</h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <div class="surface-card px-3 py-2">
+        <div class="small text-body-secondary">Pendientes</div>
+        <div class="fw-semibold amount">{{ store.pendingCount() }} / {{ limits.maxPendingRequests }}</div>
+      </div>
+      <div class="surface-card px-3 py-2">
+        <div class="small text-body-secondary">Total aprobado</div>
+        <div class="fw-semibold amount">{{ store.approvedTotal() | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="row g-4">
+    <section class="col-lg-5" aria-labelledby="request-title">
+      <form class="surface-card p-4 position-sticky" style="top: 1rem" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <h2 id="request-title" class="h5 fw-bold mb-1">{{ editing() ? 'Modificar solicitud' : 'Solicitar Préstamo' }}</h2>
+        <p class="text-body-secondary small mb-4">
+          @if (editing()) {
+            Puedes cambiar el monto o el plazo mientras la solicitud siga pendiente.
+          } @else {
+            Ingrese el monto que desea solicitar y el plazo para pagarlo.
+          }
+        </p>
+
+        @if (formError(); as message) {
+          <div class="alert alert-danger small py-2" role="alert">{{ message }}</div>
+        }
+        @if (!editing() && !store.canRequestMore()) {
+          <div class="alert alert-warning small py-2" role="status">
+            Tienes {{ limits.maxPendingRequests }} solicitudes pendientes. Espera una respuesta o cancela alguna para solicitar otra.
+          </div>
+        }
+
+        @let amount = form.controls.amount;
+        <div class="mb-3">
+          <label class="form-label fw-semibold small" for="amount">Monto</label>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input id="amount" class="form-control amount" type="number" inputmode="decimal" placeholder="Monto"
+              formControlName="amount" [min]="limits.minAmount" [max]="limits.maxAmount" step="1000"
+              [class.is-invalid]="amount.invalid && amount.touched" aria-describedby="amount-help amount-error" />
+          </div>
+          @if (amount.invalid && amount.touched) {
+            <div id="amount-error" class="invalid-feedback d-block">
+              @if (amount.hasError('required')) {
+                Ingresa el monto.
+              } @else if (amount.hasError('min') || amount.hasError('max')) {
+                Debe estar entre {{ limits.minAmount | currency: 'COP' : 'symbol-narrow' : '1.0-0' }} y
+                {{ limits.maxAmount | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}.
+              } @else {
+                Usa máximo dos decimales.
+              }
+            </div>
+          } @else {
+            <div id="amount-help" class="form-text">
+              Entre {{ limits.minAmount | currency: 'COP' : 'symbol-narrow' : '1.0-0' }} y
+              {{ limits.maxAmount | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}.
+            </div>
+          }
+        </div>
+
+        @let term = form.controls.termMonths;
+        <div class="mb-3">
+          <label class="form-label fw-semibold small" for="termMonths">Plazo (meses)</label>
+          <input id="termMonths" class="form-control amount" type="number" inputmode="numeric" formControlName="termMonths"
+            [min]="limits.minTermMonths" [max]="limits.maxTermMonths" step="1"
+            [class.is-invalid]="term.invalid && term.touched" aria-describedby="term-error" />
+          <div class="d-flex flex-wrap gap-1 mt-2" role="group" aria-label="Plazos frecuentes">
+            @for (months of quickTerms; track months) {
+              <button type="button" class="btn btn-sm rounded-pill"
+                [class]="term.value === months ? 'btn-dark' : 'btn-outline-secondary'" (click)="setTerm(months)">
+                {{ months }} m
+              </button>
+            }
+          </div>
+          @if (term.invalid && term.touched) {
+            <div id="term-error" class="invalid-feedback d-block">
+              El plazo debe ser un número entero entre {{ limits.minTermMonths }} y {{ limits.maxTermMonths }} meses.
+            </div>
+          }
+        </div>
+
+        @if (estimatedInstallment(); as installment) {
+          <div class="rounded-3 bg-body-tertiary px-3 py-2 mb-3 small">
+            Cuota estimada sin intereses:
+            <strong class="amount">{{ installment | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</strong> / mes
+          </div>
+        }
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark px-4" type="submit" [disabled]="submitting() || (!editing() && !store.canRequestMore())">
+            @if (submitting()) {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            }
+            {{ editing() ? 'Guardar cambios' : 'Solicitar' }}
+          </button>
+          @if (editing()) {
+            <button class="btn btn-outline-secondary" type="button" (click)="stopEditing()">Descartar</button>
+          }
+        </div>
+      </form>
+    </section>
+
+    <section class="col-lg-7" aria-labelledby="mine-title">
+      <div class="surface-card">
+        <div class="d-flex align-items-center justify-content-between p-4 pb-3">
+          <h2 id="mine-title" class="h5 fw-bold mb-0">Mis Préstamos</h2>
+          @if (live()) {
+            <span class="d-inline-flex align-items-center gap-2 small text-body-secondary" title="Los cambios de estado llegan en tiempo real">
+              <span class="live-dot" aria-hidden="true"></span>En vivo
+            </span>
+          }
+        </div>
+
+        @if (store.error(); as message) {
+          <div class="alert alert-danger alert-dismissible small mx-4" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" aria-label="Cerrar" (click)="store.clearError()"></button>
+          </div>
+        }
+
+        <ul class="list-unstyled mb-0">
+          @for (loan of store.loans(); track loan.id) {
+            <li class="loan-row border-top px-4 py-3" [class.just-updated]="highlighted() === loan.id">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                  <div class="fw-semibold fs-5 amount">{{ loan.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</div>
+                  <div class="small text-body-secondary">
+                    {{ loan.termMonths }} meses · solicitado el {{ loan.createdAt | date: 'mediumDate' }}
+                  </div>
+                </div>
+                <span class="status-badge" [class]="statusBadges[loan.status]">{{ statusLabels[loan.status] }}</span>
+              </div>
+              @if (loan.reviewComment) {
+                <p class="small mb-0 mt-2 text-body-secondary">
+                  <i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>{{ loan.reviewComment }}
+                </p>
+              }
+              @if (loan.status === 'PENDING') {
+                <div class="d-flex gap-2 mt-2">
+                  <button class="btn btn-link btn-sm px-0 text-decoration-none" type="button" (click)="startEditing(loan)">
+                    <i class="bi bi-pencil me-1" aria-hidden="true"></i>Modificar
+                  </button>
+                  <button class="btn btn-link btn-sm px-0 ms-2 text-danger text-decoration-none" type="button" (click)="cancel(loan)">
+                    <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancelar solicitud
+                  </button>
+                </div>
+              }
+            </li>
+          } @empty {
+            @if (store.loading()) {
+              @for (row of placeholderRows; track row) {
+                <li class="border-top px-4 py-3 placeholder-glow" aria-hidden="true">
+                  <span class="placeholder col-4 d-block mb-2"></span>
+                  <span class="placeholder placeholder-sm col-6 d-block"></span>
+                </li>
+              }
+            } @else {
+              <li class="border-top text-center text-body-secondary px-4 py-5">
+                <i class="bi bi-cash-coin fs-2 d-block mb-2" aria-hidden="true"></i>
+                Aún no tienes préstamos. Solicita el primero con el formulario.
+              </li>
+            }
+          }
+        </ul>
+      </div>
+    </section>
+  </div>
+</main>
+
+@if (toast(); as message) {
+  <div class="toast-stack">
+    <div class="toast show align-items-center text-bg-dark border-0" role="status" aria-live="polite">
+      <div class="d-flex">
+        <div class="toast-body">{{ message }}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Cerrar" (click)="toast.set(null)"></button>
+      </div>
+    </div>
+  </div>
+}

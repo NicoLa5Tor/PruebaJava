@@ -1,6 +1,6 @@
 # Backend base
 
-Base para una API REST con Java 21, Spring Boot, JPA y PostgreSQL. No incluye entidades ni datos de negocio ficticios.
+API REST de préstamos bancarios con Java 21, Spring Boot, JPA, PostgreSQL, Flyway y EhCache. Ver el README raíz para decisiones técnicas y endpoints.
 
 ## Ejecutar con Docker
 
@@ -23,9 +23,15 @@ docker compose down
 
 ## Añadir un recurso de negocio
 
-1. Crea una entidad que extienda `BaseEntity`.
-2. Crea un repositorio que extienda `BaseRepository<Entidad>`.
-3. Define DTOs de entrada y salida para el recurso.
-4. Implementa servicio y controlador bajo `/api/v1`.
+El código sigue arquitectura hexagonal por módulo (ver `loan/` como referencia):
 
-Las excepciones de negocio deben lanzar las excepciones de `exception`; `GlobalExceptionHandler` las convierte en respuestas `application/problem+json` consistentes.
+1. `domain/`: modelo y reglas en Java puro (sin Spring ni JPA).
+2. `application/port/in`: interfaces de casos de uso; `application/port/out`: lo que el caso de uso necesita del exterior.
+3. `application/service`: implementación de los casos de uso (`@Transactional` aquí).
+4. `infrastructure/persistence`: entidad JPA que extiende `BaseJpaEntity`, repositorio Spring Data y adaptador que implementa el puerto.
+5. `infrastructure/web`: controlador bajo `/api/v1` y DTOs con Hibernate Validator.
+6. Migración Flyway nueva en `src/main/resources/db/migration`.
+
+`ArchitectureTest` falla si una capa interna depende de una externa. Las excepciones de `shared/domain/exception` se convierten en `application/problem+json` en `GlobalExceptionHandler`.
+
+Si tu base local se creó antes de Flyway, se adopta automáticamente como V1. Para empezar desde cero: `docker compose down -v`.

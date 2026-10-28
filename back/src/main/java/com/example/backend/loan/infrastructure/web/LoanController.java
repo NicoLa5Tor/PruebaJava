@@ -82,8 +82,9 @@ public class LoanController {
     public Flux<ServerSentEvent<LoanStatusChanged>> myEvents(@AuthenticationPrincipal AuthenticatedUser principal) {
         Flux<ServerSentEvent<LoanStatusChanged>> changes = events.forApplicant(principal.userId())
                 .map(event -> ServerSentEvent.builder(event).id(event.loanId().toString()).event("loan-status").build());
-        // Comments keep proxies from closing an idle connection.
-        Flux<ServerSentEvent<LoanStatusChanged>> heartbeats = Flux.interval(HEARTBEAT)
+        // The first comment commits the response right away, so the client knows the stream is open; later ones
+        // keep proxies from closing an idle connection.
+        Flux<ServerSentEvent<LoanStatusChanged>> heartbeats = Flux.interval(Duration.ZERO, HEARTBEAT)
                 .map(tick -> ServerSentEvent.<LoanStatusChanged>builder().comment("keep-alive").build());
         return Flux.merge(changes, heartbeats);
     }

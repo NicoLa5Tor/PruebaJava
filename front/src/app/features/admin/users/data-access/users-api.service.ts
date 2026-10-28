@@ -17,6 +17,8 @@ export interface CreateUserPayload {
   displayName: string;
   avatarUrl: string;
   roles: UserRole[];
+  /** Optional: lets the person sign in with email and password besides Logto. */
+  password?: string;
 }
 
 /** Every field is optional: omitted fields are left unchanged by the backend. */
@@ -31,7 +33,7 @@ export class UsersApiService {
 
   findAll({ page, size, search }: UserQuery): Observable<PageResponse<UserAccount>> {
     return this.api.get<PageResponse<UserAccount>>('users', {
-      params: { page, size, sort: 'createdAt,desc', ...(search ? { search } : {}) },
+      params: { page, size, ...(search ? { search } : {}) },
     });
   }
 
@@ -45,6 +47,10 @@ export class UsersApiService {
 
   update(id: string, payload: UpdateUserPayload): Observable<UserAccount> {
     return this.api.put<UserAccount>(`users/${id}`, payload);
+  }
+
+  changePassword(id: string, password: string): Observable<void> {
+    return this.api.put<void>(`users/${id}/password`, { password });
   }
 
   delete(id: string): Observable<void> {

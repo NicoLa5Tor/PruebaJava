@@ -3,48 +3,94 @@
     <div class="row g-0 min-vh-100">
       <aside class="brand-panel col-lg-6 d-none d-lg-flex flex-column justify-content-between p-5 text-white">
         <div class="brand-mark d-inline-flex align-items-center gap-2 fw-semibold fs-5">
-          <i class="bi bi-shield-check" aria-hidden="true"></i>
-          <span>Frontend</span>
+          <i class="bi bi-bank" aria-hidden="true"></i>
+          <span>Préstamos</span>
         </div>
         <div>
-          <p class="text-uppercase small fw-semibold mb-3">Acceso seguro</p>
-          <h1 class="display-5 fw-semibold mb-3">Un espacio preparado para tu aplicación.</h1>
-          <p class="lead mb-0 text-white-50">El acceso se conectará al proveedor de autenticación cuando el contrato esté disponible.</p>
+          <p class="text-uppercase small fw-semibold mb-3 text-white-50">Banca digital</p>
+          <h1 class="display-5 fw-semibold mb-3">Solicita tu préstamo y sigue su estado en tiempo real.</h1>
+          <p class="lead mb-0 text-white-50">Tus solicitudes se revisan por un administrador y te avisamos apenas cambian.</p>
         </div>
-        <p class="small mb-0 text-white-50">API REST · Angular · Spring Boot</p>
+        <p class="small mb-0 text-white-50">Spring Boot · Angular · JWT</p>
       </aside>
 
       <main class="col-12 col-lg-6 d-flex align-items-center justify-content-center p-4 p-sm-5">
         <div class="login-card w-100">
-          <div class="d-lg-none brand-mark text-primary d-inline-flex align-items-center gap-2 fw-semibold fs-5 mb-5">
-            <i class="bi bi-shield-check" aria-hidden="true"></i>
-            <span>Frontend</span>
+          <div class="d-lg-none brand-mark d-inline-flex align-items-center gap-2 fw-semibold fs-5 mb-5">
+            <i class="bi bi-bank" aria-hidden="true"></i>
+            <span>Préstamos</span>
           </div>
 
-          <header class="mb-4">
-            <h1 class="h2 fw-bold mb-2">Inicia sesión</h1>
-            <p class="text-body-secondary mb-0">Selecciona un proveedor para continuar.</p>
-          </header>
+          <form class="surface-card p-4 p-sm-5" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <header class="mb-4">
+              <h1 class="h3 fw-bold mb-1">Iniciar Sesión</h1>
+              <p class="text-body-secondary mb-0">Ingrese sus credenciales para acceder</p>
+            </header>
 
-          <p class="small text-body-secondary mb-4">
-            <i class="bi bi-person-plus me-1" aria-hidden="true"></i>
-            ¿Primera vez? Entra con tu proveedor y te pediremos completar tu registro.
-          </p>
+            @if (error(); as message) {
+              <div class="alert alert-danger small py-2" role="alert">{{ message }}</div>
+            }
 
-          <div class="row g-3">
-            <div class="col-sm-6">
-              <button class="btn btn-outline-secondary w-100 social-button" type="button" aria-label="Continuar con Google" (click)="signInWith('google')">
-                <i class="bi bi-google" aria-hidden="true"></i>
-                <span>Google</span>
-              </button>
+            @let email = form.controls.email;
+            <div class="mb-3">
+              <label class="form-label fw-semibold small" for="email">Email</label>
+              <input id="email" class="form-control" type="email" placeholder="Email" autocomplete="username"
+                formControlName="email" [class.is-invalid]="email.invalid && email.touched" />
+              <div class="invalid-feedback">Ingresa un correo válido.</div>
             </div>
-            <div class="col-sm-6">
-              <button class="btn btn-outline-secondary w-100 social-button" type="button" aria-label="Continuar con Facebook" (click)="signInWith('facebook')">
-                <i class="bi bi-facebook text-primary" aria-hidden="true"></i>
-                <span>Facebook</span>
-              </button>
+
+            @let password = form.controls.password;
+            <div class="mb-4">
+              <label class="form-label fw-semibold small" for="password">Contraseña</label>
+              <div class="input-group has-validation">
+                <input id="password" class="form-control" [type]="showPassword() ? 'text' : 'password'"
+                  placeholder="Contraseña" autocomplete="current-password" formControlName="password"
+                  [class.is-invalid]="password.invalid && password.touched" />
+                <button class="btn btn-outline-secondary" type="button"
+                  [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  (click)="showPassword.set(!showPassword())">
+                  <i class="bi" [class]="showPassword() ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
+                </button>
+                <div class="invalid-feedback">Ingresa tu contraseña.</div>
+              </div>
             </div>
-          </div>
+
+            <button class="btn btn-dark w-100 py-2" type="submit" [disabled]="submitting()">
+              @if (submitting()) {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              }
+              Ingresar
+            </button>
+
+            <div class="divider my-4 small text-body-secondary"><span>o continúa con</span></div>
+
+            <div class="row g-2">
+              <div class="col-6">
+                <button class="btn btn-outline-secondary w-100 social-button" type="button" aria-label="Continuar con Google" (click)="signInWith('google')">
+                  <i class="bi bi-google" aria-hidden="true"></i><span>Google</span>
+                </button>
+              </div>
+              <div class="col-6">
+                <button class="btn btn-outline-secondary w-100 social-button" type="button" aria-label="Continuar con Facebook" (click)="signInWith('facebook')">
+                  <i class="bi bi-facebook" aria-hidden="true"></i><span>Facebook</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          @if (demoAccounts.length) {
+            <details class="demo-accounts mt-3 small">
+              <summary class="text-body-secondary">Cuentas de demostración</summary>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                @for (account of demoAccounts; track account.email) {
+                  <button type="button" class="btn btn-sm btn-light border" (click)="useDemoAccount(account.email)">
+                    <span class="fw-semibold">{{ account.label }}</span> · {{ account.email }}
+                  </button>
+                }
+              </div>
+              <p class="text-body-secondary mt-2 mb-0">Contraseña: <code>123</code></p>
+            </details>
+          }
         </div>
       </main>
     </div>

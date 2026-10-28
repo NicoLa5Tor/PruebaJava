@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import LogtoClient, { UserScope } from '@logto/browser';
 import { AuthSessionService } from './auth-session.service';
 import { RegistrationDetails, SignInResult } from './auth.models';
@@ -9,6 +10,7 @@ type SocialProvider = 'google' | 'facebook';
 @Injectable({ providedIn: 'root' })
 export class LogtoAuthService {
   private readonly session = inject(AuthSessionService);
+  private readonly router = inject(Router);
   private readonly client = new LogtoClient({ ...inject(LOGTO_SETTINGS), scopes: [UserScope.Email] });
 
   async signIn(provider?: SocialProvider): Promise<void> {
@@ -49,8 +51,13 @@ export class LogtoAuthService {
     await this.client.signOut(`${window.location.origin}/login`);
   }
 
+  /** Ends the local session and, if the person came through Logto, the Logto session as well. */
   async signOut(): Promise<void> {
     await this.session.signOut();
-    await this.client.signOut(`${window.location.origin}/login`);
+    if (await this.client.isAuthenticated()) {
+      await this.client.signOut(`${window.location.origin}/login`);
+      return;
+    }
+    await this.router.navigateByUrl('/login');
   }
 }

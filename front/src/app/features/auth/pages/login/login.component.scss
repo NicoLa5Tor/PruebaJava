@@ -3,11 +3,13 @@
 }
 
 .login-page {
-  background: var(--bs-tertiary-bg);
+  background: #fafafa;
 }
 
 .brand-panel {
-  background: linear-gradient(145deg, #0d6efd, #052c65);
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.08), transparent 45%),
+    linear-gradient(160deg, #27272a, #09090b);
 }
 
 .brand-mark i {
@@ -23,5 +25,22 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 3rem;
+  min-height: 2.75rem;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--loan-line);
+  }
+}
+
+.demo-accounts summary {
+  cursor: pointer;
 }

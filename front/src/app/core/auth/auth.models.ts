@@ -1,7 +1,15 @@
-export type UserRole = 'USER' | 'ADMIN';
+export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 
-export const ROLE_LABELS: Record<UserRole, string> = { USER: 'Usuario', ADMIN: 'Administrador' };
+export const ROLE_LABELS: Record<UserRole, string> = {
+  USER: 'Usuario',
+  ADMIN: 'Administrador',
+  SUPER_ADMIN: 'Super administrador',
+};
+/** Roles that may approve or reject loans. */
+export const REVIEWER_ROLES: readonly UserRole[] = ['ADMIN', 'SUPER_ADMIN'];
+/** Most privileged first; used to show a single role per person. */
+const ROLE_PRIORITY: readonly UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'USER'];
 export const STATUS_LABELS: Record<UserStatus, string> = { ACTIVE: 'Activo', INACTIVE: 'Inactivo' };
 
 /** Mirrors the backend UserResponse. */
@@ -14,6 +22,8 @@ export interface UserAccount {
   avatarUrl: string | null;
   logtoSubject: string | null;
   emailVerified: boolean;
+  /** True when the account can sign in with email and password (not only through Logto). */
+  hasPassword: boolean;
   status: UserStatus;
   roles: UserRole[];
   createdAt: string;
@@ -50,4 +60,8 @@ export type SignInResult =
 export function displayNameOf(user: Pick<UserAccount, 'displayName' | 'firstName' | 'lastName' | 'email'>): string {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
   return user.displayName || fullName || user.email;
+}
+
+export function primaryRole(roles: readonly UserRole[]): UserRole {
+  return ROLE_PRIORITY.find((role) => roles.includes(role)) ?? 'USER';
 }

@@ -3,9 +3,10 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { map, of, switchMap } from 'rxjs';
 import { problemMessage } from '../../../../../core/api/problem-message';
 import { AuthSessionService } from '../../../../../core/auth/auth-session.service';
-import { UserAccount, UserRole, UserStatus, displayNameOf } from '../../../../../core/auth/auth.models';
+import { ROLE_LABELS, UserAccount, UserRole, UserStatus, displayNameOf, primaryRole } from '../../../../../core/auth/auth.models';
 import { UserAvatarComponent } from '../../../../../shared/ui/user-avatar/user-avatar.component';
 import { UsersApiService } from '../../data-access/users-api.service';
 
@@ -33,6 +34,11 @@ export class UserFormComponent implements OnInit {
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly displayNameOf = displayNameOf;
+  protected readonly roleOptions: { value: UserRole; label: string; hint: string }[] = [
+    { value: 'USER', label: ROLE_LABELS.USER, hint: 'Solicita préstamos y consulta su estado.' },
+    { value: 'ADMIN', label: ROLE_LABELS.ADMIN, hint: 'Aprueba o rechaza solicitudes de préstamo.' },
+    { value: 'SUPER_ADMIN', label: ROLE_LABELS.SUPER_ADMIN, hint: 'Revisa préstamos y administra usuarios y roles.' },
+  ];
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
@@ -40,7 +46,9 @@ export class UserFormComponent implements OnInit {
     lastName: ['', Validators.maxLength(100)],
     displayName: ['', Validators.maxLength(150)],
     avatarUrl: ['', [Validators.maxLength(2048), Validators.pattern(/^(https?:\/\/\S+)?$/)]],
-    admin: [false],
+    role: ['USER' as UserRole, Validators.required],
+    // Optional on create (Logto-only accounts have none); on edit, filling it resets the password.
+    password: ['', [Validators.minLength(8), Validators.maxLength(72)]],
     status: ['ACTIVE' as UserStatus],
     emailVerified: [false],
   });
@@ -51,8 +59,8 @@ export class UserFormComponent implements OnInit {
       return;
     }
     if (this.isSelf()) {
-      // Mirrors the backend rule: an admin cannot demote or deactivate themselves.
-      this.form.controls.admin.disable();
+      // Mirrors the backend rule: a super admin cannot demote or deactivate themselves.
+      this.form.controls.role.disable();
       this.form.controls.status.disable();
     }
     const resolved = this.resolvedUser();
@@ -84,7 +92,7 @@ export class UserFormComponent implements OnInit {
       lastName: user.lastName ?? '',
       displayName: user.displayName ?? '',
       avatarUrl: user.avatarUrl ?? '',
-      admin: user.roles.includes('ADMIN'),
+      role: primaryRole(user.roles),
       status: user.status,
       emailVerified: user.emailVerified,
     });
@@ -95,12 +103,15 @@ export class UserFormComponent implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    const { admin, status, emailVerified, ...profile } = this.form.getRawValue();
-    const roles: UserRole[] = admin ? ['USER', 'ADMIN'] : ['USER'];
+    const { role, password, status, emailVerified, ...profile } = this.form.getRawValue();
+    const roles: UserRole[] = [role];
     const id = this.id();
     const request = id
-      ? this.api.update(id, { ...profile, roles, status, emailVerified })
-      : this.api.create({ ...profile, roles });
+      ? this.api.update(id, { ...profile, roles, status, emailVerified }).pipe(
+          // A new password, if typed, is saved after the profile so both changes land before leaving the page.
+          switchMap((saved) => (password ? this.api.changePassword(id, password).pipe(map(() => saved)) : of(saved))),
+        )
+      : this.api.create({ ...profile, roles, ...(password ? { password } : {}) });
 
     this.saving.set(true);
     this.error.set(null);

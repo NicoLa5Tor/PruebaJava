@@ -10,7 +10,7 @@ Código reutilizable y sin conocimiento de un dominio: componentes UI, directiva
 
 ## `features/`
 
-Cualquier funcionalidad de negocio futura tendrá su propia carpeta aquí. Cada feature encapsulará sus rutas, páginas, componentes exclusivos, contratos y acceso a datos. No se crearán componentes de ejemplo hasta definir el primer dominio.
+Cada funcionalidad de negocio tiene su carpeta, con sus rutas, páginas, contratos y acceso a datos. `loans/` contiene la página del solicitante (`my-loans`) y la del revisor (`loan-review`, montada bajo `/admin/loans`), que comparten `data-access/` (API, store con signals, cliente SSE y Reactive Form).
 
 ## Raíz de `app/`
 

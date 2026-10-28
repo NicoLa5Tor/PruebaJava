@@ -13,7 +13,7 @@
         @if (user(); as current) {
           Creado el {{ current.createdAt | date: 'medium' }}
         } @else if (!isEdit()) {
-          La persona podrá entrar con Logto usando este mismo correo.
+          La persona podrá entrar con Logto usando este mismo correo, o con la contraseña que definas aquí.
         }
       </p>
     </div>
@@ -77,16 +77,42 @@
         @if (isSelf()) {
           <div class="alert alert-info small py-2" role="note">
             <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-            No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.
+            No puedes quitarte el rol de super administrador ni desactivar tu propia cuenta.
           </div>
         }
         <div class="row g-3">
+          <div class="col-12">
+            <fieldset>
+              <legend class="form-label fs-6">Rol</legend>
+              <div class="row g-2">
+                @for (option of roleOptions; track option.value) {
+                  <div class="col-md-4">
+                    <label class="role-option d-block border rounded-3 p-3 h-100"
+                      [class.border-dark]="form.controls.role.value === option.value"
+                      [class.opacity-50]="form.controls.role.disabled">
+                      <input class="form-check-input me-2" type="radio" formControlName="role" [value]="option.value" />
+                      <span class="fw-semibold">{{ option.label }}</span>
+                      <span class="d-block small text-body-secondary mt-1">{{ option.hint }}</span>
+                    </label>
+                  </div>
+                }
+              </div>
+            </fieldset>
+          </div>
           <div class="col-sm-6">
-            <div class="form-check form-switch">
-              <input id="admin" class="form-check-input" type="checkbox" role="switch" formControlName="admin" />
-              <label class="form-check-label" for="admin">Administrador</label>
+            <label class="form-label" for="password">
+              {{ isEdit() ? 'Nueva contraseña' : 'Contraseña' }} <span class="text-body-secondary small">(opcional)</span>
+            </label>
+            <input id="password" class="form-control" type="password" formControlName="password" autocomplete="new-password"
+              [class.is-invalid]="form.controls.password.invalid && form.controls.password.touched" />
+            <div class="invalid-feedback">Entre 8 y 72 caracteres.</div>
+            <div class="form-text">
+              @if (isEdit()) {
+                {{ user()?.hasPassword ? 'Déjala vacía para conservar la actual.' : 'Hoy solo entra con Logto; define una para habilitar el acceso con correo.' }}
+              } @else {
+                Sin contraseña, la persona solo podrá entrar con Logto.
+              }
             </div>
-            <div class="form-text">Todos los usuarios tienen el rol Usuario.</div>
           </div>
           @if (isEdit()) {
             <div class="col-sm-6">

@@ -2,14 +2,14 @@
   @if (navigating()) {
     <div class="progress rounded-0 position-fixed top-0 start-0 w-100" style="height: 3px; z-index: 1080"
       role="progressbar" aria-label="Cargando página">
-      <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
+      <div class="progress-bar bg-dark progress-bar-striped progress-bar-animated w-100"></div>
     </div>
   }
   <nav class="navbar navbar-expand-lg bg-body border-bottom shadow-sm">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2 fw-semibold" routerLink="/">
-        <i class="bi bi-shield-check text-primary" aria-hidden="true"></i>
-        <span>Frontend</span>
+        <i class="bi bi-bank" aria-hidden="true"></i>
+        <span>Préstamos</span>
       </a>
       <button
         class="navbar-toggler"
@@ -24,7 +24,21 @@
 
       <div id="main-navigation" class="collapse navbar-collapse" [class.show]="menuOpen()">
         <ul class="navbar-nav me-auto mb-3 mb-lg-0">
-          @if (isAdmin()) {
+          @if (isApplicant()) {
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/loans" routerLinkActive="active" (click)="menuOpen.set(false)">
+                <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>Mis préstamos
+              </a>
+            </li>
+          }
+          @if (isReviewer()) {
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/loans" routerLinkActive="active" (click)="menuOpen.set(false)">
+                <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Gestionar préstamos
+              </a>
+            </li>
+          }
+          @if (isSuperAdmin()) {
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/users" routerLinkActive="active" (click)="menuOpen.set(false)">
                 <i class="bi bi-people me-1" aria-hidden="true"></i>Usuarios
@@ -45,8 +59,8 @@
               <div class="fw-semibold small">{{ userName() }}</div>
               <div class="text-body-secondary small">{{ roleLabel() }}</div>
             </div>
-            <button class="btn btn-outline-danger btn-sm" type="button" [disabled]="signingOut()" (click)="signOut()">
-              <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Salir
+            <button class="btn btn-dark btn-sm" type="button" [disabled]="signingOut()" (click)="signOut()">
+              <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Cerrar Sesión
             </button>
           </div>
         }

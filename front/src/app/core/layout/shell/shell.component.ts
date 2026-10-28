@@ -12,7 +12,7 @@ import {
 } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthSessionService } from '../../auth/auth-session.service';
-import { ROLE_LABELS, displayNameOf } from '../../auth/auth.models';
+import { REVIEWER_ROLES, ROLE_LABELS, displayNameOf, primaryRole } from '../../auth/auth.models';
 import { LogtoAuthService } from '../../auth/logto-auth.service';
 import { UserAvatarComponent } from '../../../shared/ui/user-avatar/user-avatar.component';
 
@@ -27,12 +27,14 @@ export class ShellComponent {
   private readonly auth = inject(LogtoAuthService);
   private readonly session = inject(AuthSessionService);
   protected readonly user = this.session.currentUser;
-  protected readonly isAdmin = computed(() => this.session.hasRole('ADMIN'));
+  protected readonly isApplicant = computed(() => this.user() !== null && this.session.hasRole('USER'));
+  protected readonly isReviewer = computed(() => this.user() !== null && this.session.hasAnyRole(REVIEWER_ROLES));
+  protected readonly isSuperAdmin = computed(() => this.user() !== null && this.session.hasRole('SUPER_ADMIN'));
   protected readonly userName = computed(() => {
     const user = this.user();
     return user ? displayNameOf(user) : '';
   });
-  protected readonly roleLabel = computed(() => (this.isAdmin() ? ROLE_LABELS.ADMIN : ROLE_LABELS.USER));
+  protected readonly roleLabel = computed(() => ROLE_LABELS[primaryRole(this.user()?.roles ?? [])]);
   /** True while the router resolves data for the next page. */
   protected readonly navigating = toSignal(
     inject(Router).events.pipe(

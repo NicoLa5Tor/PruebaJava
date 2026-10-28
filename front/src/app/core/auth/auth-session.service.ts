@@ -30,6 +30,17 @@ export class AuthSessionService {
     return this.user()?.roles.includes(role) ?? false;
   }
 
+  hasAnyRole(roles: readonly UserRole[]): boolean {
+    return roles.some((role) => this.hasRole(role));
+  }
+
+  async signInWithPassword(email: string, password: string): Promise<void> {
+    const tokens = await firstValueFrom(
+      this.api.post<AccessTokenResponse>('auth/login', { email, password }, { withCredentials: true }),
+    );
+    await this.startSession(tokens);
+  }
+
   /** Never creates an account: an unknown identity comes back as `registration-required`. */
   async signIn(idToken: string): Promise<SignInResult> {
     let tokens: AccessTokenResponse;

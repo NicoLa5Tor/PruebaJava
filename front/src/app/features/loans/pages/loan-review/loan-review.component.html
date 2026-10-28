@@ -1,0 +1,165 @@
+<main class="container py-4 py-lg-5" style="max-width: 960px">
+  <header class="mb-4">
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Hola, {{ reviewerName() }}</p>
+    <h1 class="h3 fw-bold mb-1">Gestionar Solicitudes de Préstamos</h1>
+    <p class="text-body-secondary mb-0">
+      Aprueba o rechaza las solicitudes pendientes.
+      @if (page(); as current) {
+        <span class="badge text-bg-light border ms-1">{{ current.totalElements }} en esta vista</span>
+      }
+    </p>
+  </header>
+
+  @if (notice(); as message) {
+    <div class="alert alert-success alert-dismissible" role="status">
+      {{ message }}
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="notice.set(null)"></button>
+    </div>
+  }
+  @if (error(); as message) {
+    <div class="alert alert-danger alert-dismissible" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="error.set(null)"></button>
+    </div>
+  }
+
+  <div class="surface-card">
+    <div class="p-3 border-bottom overflow-auto">
+      <ul class="nav nav-pills flex-nowrap gap-1" role="tablist" aria-label="Filtrar por estado">
+        @for (tab of tabs; track tab.label) {
+          <li class="nav-item" role="presentation">
+            <button type="button" role="tab" class="nav-link text-nowrap py-1 px-3"
+              [class.active]="status() === tab.status" [class.bg-dark]="status() === tab.status"
+              [class.text-body]="status() !== tab.status" [attr.aria-selected]="status() === tab.status"
+              (click)="selectTab(tab.status)">
+              {{ tab.label }}
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="position-relative">
+      @if (loading()) {
+        <div class="progress rounded-0 position-absolute top-0 start-0 w-100" style="height: 3px" role="progressbar" aria-label="Cargando">
+          <div class="progress-bar bg-dark progress-bar-striped progress-bar-animated w-100"></div>
+        </div>
+      }
+
+      <ul class="list-unstyled mb-0">
+        @for (loan of page()?.content ?? []; track loan.id) {
+          <li class="loan-row px-4 py-3" [class.border-top]="!$first">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+              <div class="min-w-0">
+                <div class="small text-body-secondary text-truncate">
+                  <i class="bi bi-person me-1" aria-hidden="true"></i>{{ applicantOf(loan) }}
+                </div>
+                <div class="d-flex flex-wrap align-items-baseline gap-2 mt-1">
+                  <span class="fw-semibold fs-5 amount">{{ loan.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</span>
+                  <span class="small text-body-secondary">a {{ loan.termMonths }} meses</span>
+                  <span class="status-badge" [class]="statusBadges[loan.status]">{{ statusLabels[loan.status] }}</span>
+                </div>
+                <div class="small text-body-secondary mt-1">
+                  Solicitado el {{ loan.createdAt | date: 'medium' }}
+                  @if (loan.reviewedAt) {
+                    · revisado el {{ loan.reviewedAt | date: 'medium' }}
+                  }
+                </div>
+                @if (loan.reviewComment) {
+                  <div class="small mt-1"><i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>{{ loan.reviewComment }}</div>
+                }
+              </div>
+
+              @if (loan.status === 'PENDING') {
+                <div class="d-flex gap-2 flex-shrink-0">
+                  <button class="btn btn-dark" type="button" [disabled]="busyId() === loan.id" (click)="approve(loan)">
+                    @if (busyId() === loan.id && !rejecting()) {
+                      <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                    }
+                    Aprobar
+                  </button>
+                  <button class="btn btn-danger" type="button" [disabled]="busyId() === loan.id" (click)="openReject(loan)">
+                    Rechazar
+                  </button>
+                </div>
+              }
+            </div>
+          </li>
+        } @empty {
+          @if (loading()) {
+            @for (row of placeholderRows; track row) {
+              <li class="px-4 py-3 placeholder-glow" [class.border-top]="row > 0" aria-hidden="true">
+                <span class="placeholder col-5 d-block mb-2"></span>
+                <span class="placeholder col-3 d-block"></span>
+              </li>
+            }
+          } @else {
+            <li class="text-center text-body-secondary px-4 py-5">
+              <i class="bi bi-inbox fs-2 d-block mb-2" aria-hidden="true"></i>
+              No hay solicitudes en esta vista.
+            </li>
+          }
+        }
+      </ul>
+    </div>
+
+    @if (page(); as current) {
+      @if (current.totalPages > 1) {
+        <div class="border-top d-flex align-items-center justify-content-between p-3">
+          <span class="small text-body-secondary">Página {{ current.page + 1 }} de {{ current.totalPages }}</span>
+          <nav aria-label="Paginación de solicitudes">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item" [class.disabled]="current.page === 0">
+                <button class="page-link text-body" type="button" (click)="goToPage(current.page - 1)">Anterior</button>
+              </li>
+              <li class="page-item" [class.disabled]="current.page + 1 >= current.totalPages">
+                <button class="page-link text-body" type="button" (click)="goToPage(current.page + 1)">Siguiente</button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      }
+    }
+  </div>
+</main>
+
+@if (rejecting(); as loan) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reject-title">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content" [formGroup]="rejectForm" (ngSubmit)="confirmReject()" novalidate>
+        <div class="modal-header">
+          <h2 id="reject-title" class="modal-title h5">Rechazar solicitud</h2>
+          <button type="button" class="btn-close" aria-label="Cerrar" (click)="rejecting.set(null)"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">
+            Vas a rechazar el préstamo de <strong class="amount">{{ loan.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</strong>
+            solicitado por <strong>{{ loan.applicantEmail }}</strong>.
+          </p>
+          @let comment = rejectForm.controls.comment;
+          <label class="form-label small fw-semibold" for="reject-comment">Motivo (opcional, lo verá el solicitante)</label>
+          <textarea id="reject-comment" class="form-control" rows="3" formControlName="comment"
+            [class.is-invalid]="comment.invalid && comment.touched"></textarea>
+          <div class="d-flex justify-content-between small mt-1">
+            <span class="invalid-feedback d-block">
+              @if (comment.invalid && comment.touched) {
+                Máximo {{ maxCommentLength }} caracteres.
+              }
+            </span>
+            <span class="text-body-secondary text-nowrap">{{ comment.value.length }} / {{ maxCommentLength }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" (click)="rejecting.set(null)">Cancelar</button>
+          <button type="submit" class="btn btn-danger" [disabled]="busyId() === loan.id">
+            @if (busyId() === loan.id) {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            }
+            Rechazar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
