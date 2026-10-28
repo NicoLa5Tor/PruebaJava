@@ -12,6 +12,11 @@ export interface Loan {
   reviewComment?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  /** Effective annual rate (EA, %) and repayment figures, present once approved. */
+  annualRate?: number;
+  monthlyPayment?: number;
+  totalPayable?: number;
+  totalInterest?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +33,16 @@ export interface LoanStatusChanged {
   status: LoanStatus;
   reviewComment: string | null;
   reviewedAt: string | null;
+  annualRate: number | null;
+  monthlyPayment: number | null;
+  totalPayable: number | null;
+  totalInterest: number | null;
+}
+
+export interface ApprovePayload {
+  /** Effective annual rate (EA) in percent, e.g. 24.5 */
+  annualRate: number;
+  message: string | null;
 }
 
 /** Same limits the backend enforces in the Loan domain model. */
@@ -37,6 +52,7 @@ export const LOAN_LIMITS = {
   minTermMonths: 1,
   maxTermMonths: 120,
   maxCommentLength: 500,
+  maxAnnualRate: 100,
   maxPendingRequests: 3,
 } as const;
 

@@ -15,11 +15,13 @@ import { AuthSessionService } from '../../auth/auth-session.service';
 import { REVIEWER_ROLES, ROLE_LABELS, displayNameOf, primaryRole } from '../../auth/auth.models';
 import { LogtoAuthService } from '../../auth/logto-auth.service';
 import { UserAvatarComponent } from '../../../shared/ui/user-avatar/user-avatar.component';
+import { NotificationBellComponent } from '../../../features/notifications/ui/notification-bell.component';
+import { NotificationsStore } from '../../../features/notifications/data-access/notifications.store';
 
 /** Authenticated layout: top navbar plus the routed page. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, UserAvatarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, UserAvatarComponent, NotificationBellComponent],
   templateUrl: './shell.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -52,8 +54,11 @@ export class ShellComponent {
   protected readonly menuOpen = signal(false);
   protected readonly signingOut = signal(false);
 
+  private readonly notifications = inject(NotificationsStore);
+
   protected signOut(): void {
     this.signingOut.set(true);
+    this.notifications.clear();
     void this.auth.signOut();
   }
 }

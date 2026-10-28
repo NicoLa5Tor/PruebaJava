@@ -17,6 +17,7 @@ class LoanTest {
     private static final UUID APPLICANT = UUID.randomUUID();
     private static final UUID REVIEWER = UUID.randomUUID();
     private static final Instant NOW = Instant.parse("2026-10-28T15:00:00Z");
+    private static final BigDecimal RATE = new BigDecimal("24");
 
     @Nested
     class Request {
@@ -50,7 +51,7 @@ class LoanTest {
 
         @Test
         void approveRecordsReviewerAndTime() {
-            Loan approved = pending().approve(REVIEWER, NOW);
+            Loan approved = pending().approve(REVIEWER, RATE, null, NOW);
 
             assertThat(approved.status()).isEqualTo(LoanStatus.APPROVED);
             assertThat(approved.reviewedBy()).isEqualTo(REVIEWER);
@@ -68,22 +69,22 @@ class LoanTest {
         @Test
         void transitionsReturnNewInstancesAndLeaveTheOriginalUntouched() {
             Loan original = pending();
-            original.approve(REVIEWER, NOW);
+            original.approve(REVIEWER, RATE, null, NOW);
 
             assertThat(original.status()).isEqualTo(LoanStatus.PENDING);
         }
 
         @Test
         void onlyPendingLoansCanBeReviewed() {
-            Loan approved = pending().approve(REVIEWER, NOW);
+            Loan approved = pending().approve(REVIEWER, RATE, null, NOW);
 
-            assertThatThrownBy(() -> approved.approve(REVIEWER, NOW)).isInstanceOf(InvalidLoanStateException.class);
+            assertThatThrownBy(() -> approved.approve(REVIEWER, RATE, null, NOW)).isInstanceOf(InvalidLoanStateException.class);
             assertThatThrownBy(() -> approved.reject(REVIEWER, null, NOW)).isInstanceOf(InvalidLoanStateException.class);
         }
 
         @Test
         void applicantCannotReviewTheirOwnRequest() {
-            assertThatThrownBy(() -> pending().approve(APPLICANT, NOW))
+            assertThatThrownBy(() -> pending().approve(APPLICANT, RATE, null, NOW))
                     .isInstanceOf(BusinessRuleException.class)
                     .hasMessageContaining("own loan");
         }
@@ -119,7 +120,7 @@ class LoanTest {
 
         @Test
         void reviewedLoansCannotBeChanged() {
-            Loan approved = pending().approve(REVIEWER, NOW);
+            Loan approved = pending().approve(REVIEWER, RATE, null, NOW);
 
             assertThatThrownBy(() -> approved.cancel(APPLICANT)).isInstanceOf(InvalidLoanStateException.class);
             assertThatThrownBy(() -> approved.modify(APPLICANT, new BigDecimal("500"), 6))
@@ -129,6 +130,6 @@ class LoanTest {
 
     private static Loan pending() {
         return Loan.restore(UUID.randomUUID(), APPLICANT, new BigDecimal("1000"), 12, LoanStatus.PENDING, null, null,
-                null, 0L, NOW, NOW);
+                null, null, 0L, NOW, NOW);
     }
 }

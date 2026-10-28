@@ -65,6 +65,13 @@
                     · revisado el {{ loan.reviewedAt | date: 'medium' }}
                   }
                 </div>
+                @if (loan.status === 'APPROVED' && loan.monthlyPayment) {
+                  <div class="small mt-1">
+                    {{ loan.annualRate | number: '1.0-2' }} % EA · cuota
+                    <span class="amount">{{ loan.monthlyPayment | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</span>
+                    · total <span class="amount">{{ loan.totalPayable | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</span>
+                  </div>
+                }
                 @if (loan.reviewComment) {
                   <div class="small mt-1"><i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>{{ loan.reviewComment }}</div>
                 }
@@ -72,10 +79,7 @@
 
               @if (loan.status === 'PENDING') {
                 <div class="d-flex gap-2 flex-shrink-0">
-                  <button class="btn btn-dark" type="button" [disabled]="busyId() === loan.id" (click)="approve(loan)">
-                    @if (busyId() === loan.id && !rejecting()) {
-                      <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-                    }
+                  <button class="btn btn-dark" type="button" [disabled]="busyId() === loan.id" (click)="openApprove(loan)">
                     Aprobar
                   </button>
                   <button class="btn btn-danger" type="button" [disabled]="busyId() === loan.id" (click)="openReject(loan)">
@@ -122,6 +126,70 @@
     }
   </div>
 </main>
+
+@if (approving(); as loan) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="approve-title">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content" [formGroup]="approveForm" (ngSubmit)="confirmApprove()" novalidate>
+        <div class="modal-header">
+          <h2 id="approve-title" class="modal-title h5">Aprobar préstamo</h2>
+          <button type="button" class="btn-close" aria-label="Cerrar" (click)="approving.set(null)"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">
+            <strong class="amount">{{ loan.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</strong>
+            a {{ loan.termMonths }} meses para <strong>{{ loan.applicantEmail }}</strong>.
+          </p>
+
+          @let rate = approveForm.controls.annualRate;
+          <label class="form-label small fw-semibold" for="annual-rate">Tasa de interés efectiva anual (EA)</label>
+          <div class="input-group" style="max-width: 14rem">
+            <input id="annual-rate" class="form-control amount" type="number" inputmode="decimal" step="0.01" min="0"
+              max="100" formControlName="annualRate" [class.is-invalid]="rate.invalid && rate.touched" />
+            <span class="input-group-text">% EA</span>
+          </div>
+          @if (rate.invalid && rate.touched) {
+            <div class="invalid-feedback d-block">Ingresa una tasa entre 0 y 100, con máximo dos decimales.</div>
+          }
+
+          @if (offerPreview(); as offer) {
+            <div class="offer rounded-3 p-3 mt-3">
+              <div class="small text-body-secondary mb-2">El cliente recibirá esta oferta (cuota fija, amortización francesa):</div>
+              <div class="row g-2 small">
+                <div class="col-6">Cuota mensual</div>
+                <div class="col-6 text-end fw-semibold amount">{{ offer.monthlyPayment | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</div>
+                <div class="col-6">Tasa mensual equivalente</div>
+                <div class="col-6 text-end amount">{{ offer.monthlyRatePercent | number: '1.2-4' }} % MV</div>
+                <div class="col-6">Total a pagar</div>
+                <div class="col-6 text-end fw-semibold amount">{{ offer.totalPayable | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</div>
+                <div class="col-6">Intereses</div>
+                <div class="col-6 text-end amount">{{ offer.totalInterest | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</div>
+              </div>
+            </div>
+          }
+
+          @let message = approveForm.controls.message;
+          <label class="form-label small fw-semibold mt-3" for="approve-message">Mensaje para el cliente (opcional)</label>
+          <textarea id="approve-message" class="form-control" rows="2" formControlName="message"
+            [class.is-invalid]="message.invalid && message.touched"></textarea>
+          <div class="d-flex justify-content-end small mt-1">
+            <span class="text-body-secondary">{{ message.value.length }} / {{ maxCommentLength }}</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" (click)="approving.set(null)">Cancelar</button>
+          <button type="submit" class="btn btn-dark" [disabled]="busyId() === loan.id">
+            @if (busyId() === loan.id) {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            }
+            Aprobar y notificar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
 
 @if (rejecting(); as loan) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reject-title">

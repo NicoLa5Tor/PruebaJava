@@ -54,6 +54,9 @@
 
         @if (user(); as current) {
           <div class="d-flex align-items-center gap-3">
+            @if (isApplicant()) {
+              <app-notification-bell />
+            }
             <app-user-avatar [name]="userName()" [avatarUrl]="current.avatarUrl" [size]="36" />
             <div class="lh-sm">
               <div class="fw-semibold small">{{ userName() }}</div>

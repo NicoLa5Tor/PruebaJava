@@ -1,0 +1,55 @@
+<button
+  type="button"
+  class="btn btn-light border position-relative bell-button"
+  [class.ring]="ring()"
+  [attr.aria-expanded]="open()"
+  aria-haspopup="true"
+  [attr.aria-label]="store.unreadCount() ? 'Mensajes: ' + store.unreadCount() + ' sin leer' : 'Mensajes'"
+  (click)="toggle()"
+>
+  <i class="bi" [class]="store.unreadCount() ? 'bi-bell-fill' : 'bi-bell'" aria-hidden="true"></i>
+  @if (store.unreadCount()) {
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+      {{ store.unreadCount() > 9 ? '9+' : store.unreadCount() }}
+    </span>
+  }
+</button>
+
+@if (open()) {
+  <div class="inbox surface-card shadow" role="dialog" aria-label="Mensajes">
+    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+      <span class="fw-semibold">Mensajes</span>
+      @if (store.unreadCount()) {
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" (click)="store.markAllRead()">
+          Marcar todo como leído
+        </button>
+      }
+    </div>
+    <ul class="list-unstyled mb-0 inbox-list">
+      @for (item of store.items(); track item.id) {
+        <li class="px-3 py-2 border-bottom inbox-item" [class.unread]="!item.read" (click)="read(item)">
+          <div class="d-flex align-items-start gap-2">
+            <i
+              class="bi mt-1"
+              [class]="item.type === 'LOAN_APPROVED' ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger'"
+              aria-hidden="true"
+            ></i>
+            <div class="min-w-0">
+              <div class="fw-semibold small">{{ item.title }}</div>
+              <div class="small text-body-secondary">{{ item.message }}</div>
+              <div class="text-body-tertiary" style="font-size: 0.75rem">{{ item.createdAt | date: 'medium' }}</div>
+            </div>
+            @if (!item.read) {
+              <span class="unread-dot ms-auto mt-2" aria-label="Sin leer"></span>
+            }
+          </div>
+        </li>
+      } @empty {
+        <li class="px-3 py-4 text-center small text-body-secondary">
+          <i class="bi bi-inbox fs-4 d-block mb-1" aria-hidden="true"></i>
+          No tienes mensajes. Aquí te avisaremos cuando revisen tus solicitudes.
+        </li>
+      }
+    </ul>
+  </div>
+}

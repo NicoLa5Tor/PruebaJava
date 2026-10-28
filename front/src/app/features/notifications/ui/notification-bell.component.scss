@@ -1,0 +1,53 @@
+:host {
+  position: relative;
+  display: inline-block;
+}
+
+.bell-button.ring i {
+  display: inline-block;
+  animation: ring 1.2s ease;
+}
+
+@keyframes ring {
+  10%, 30%, 50% { transform: rotate(14deg); }
+  20%, 40%, 60% { transform: rotate(-14deg); }
+  70%, 100% { transform: rotate(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bell-button.ring i { animation: none; }
+}
+
+.inbox {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: min(24rem, calc(100vw - 2rem));
+  z-index: 1050;
+  overflow: hidden;
+}
+
+.inbox-list {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.inbox-item {
+  cursor: pointer;
+
+  &.unread {
+    background: #f8fafc;
+  }
+
+  &:last-child {
+    border-bottom: 0 !important;
+  }
+}
+
+.unread-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--bs-primary);
+  flex-shrink: 0;
+}

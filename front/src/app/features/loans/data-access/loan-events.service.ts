@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, repeat, retry, timer } from 'rxjs';
+import { Observable, repeat, retry, share, timer } from 'rxjs';
 import { API_BASE_URL } from '../../../core/api/api.config';
 import { AuthSessionService } from '../../../core/auth/auth-session.service';
 import { LoanStatusChanged } from './loan.models';
@@ -24,7 +24,17 @@ export class LoanEventsService {
   /** True while the stream is open, so the page can tell the user that updates arrive live. */
   readonly connected = this.connectedState.asReadonly();
 
+  /**
+   * One connection shared by every subscriber (the loans page and the notification bell); it opens with the
+   * first subscriber and closes when the last one leaves.
+   */
+  private readonly changes = this.connect();
+
   statusChanges(): Observable<LoanStatusChanged> {
+    return this.changes;
+  }
+
+  private connect(): Observable<LoanStatusChanged> {
     return this.connectOnce().pipe(
       repeat({ delay: 1_000 }),
       retry({
@@ -34,6 +44,7 @@ export class LoanEventsService {
             ? this.session.refresh()
             : timer(Math.min(MAX_RECONNECT_DELAY_MS, 1_000 * 2 ** attempt)),
       }),
+      share(),
     );
   }
 

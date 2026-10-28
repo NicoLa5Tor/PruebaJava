@@ -28,6 +28,6 @@ class LoanEventStreamTest {
     }
 
     private static LoanStatusChanged event(UUID applicant, LoanStatus status) {
-        return new LoanStatusChanged(UUID.randomUUID(), applicant, status, null, Instant.now());
+        return new LoanStatusChanged(UUID.randomUUID(), applicant, status, null, Instant.now(), null, null, null, null);
     }
 }

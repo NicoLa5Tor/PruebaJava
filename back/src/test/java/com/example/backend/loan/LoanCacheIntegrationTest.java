@@ -49,7 +49,7 @@ class LoanCacheIntegrationTest extends IntegrationTest {
                 .as("second read comes from the cache, not the database").isEqualTo(12);
         assertThat(queries.findMine(applicant.getId()).getFirst().termMonths()).isEqualTo(12);
 
-        reviews.approve(loan.id(), admin.getId());
+        reviews.approve(loan.id(), admin.getId(), new BigDecimal("24"), null);
 
         Loan reloaded = queries.findById(loan.id(), applicant.getId(), false);
         assertThat(reloaded.status()).isEqualTo(LoanStatus.APPROVED);

@@ -1,6 +1,7 @@
 package com.example.backend.loan.infrastructure.persistence;
 
 import com.example.backend.loan.domain.model.Loan;
+import com.example.backend.loan.domain.model.LoanOffer;
 import com.example.backend.loan.domain.model.LoanStatus;
 import com.example.backend.shared.infrastructure.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
@@ -38,6 +39,18 @@ public class LoanJpaEntity extends BaseJpaEntity {
 
     private Instant reviewedAt;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal annualRate;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal monthlyPayment;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal totalPayable;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal totalInterest;
+
     /** Optimistic lock: a stale write (e.g. a lost race outside the row lock) fails with 409 instead of overwriting. */
     @Version
     @Column(nullable = false)
@@ -51,10 +64,17 @@ public class LoanJpaEntity extends BaseJpaEntity {
         reviewComment = loan.reviewComment();
         reviewedBy = loan.reviewedBy();
         reviewedAt = loan.reviewedAt();
+        LoanOffer offer = loan.offer();
+        annualRate = offer == null ? null : offer.annualRate();
+        monthlyPayment = offer == null ? null : offer.monthlyPayment();
+        totalPayable = offer == null ? null : offer.totalPayable();
+        totalInterest = offer == null ? null : offer.totalInterest();
     }
 
     Loan toDomain() {
+        LoanOffer offer = annualRate == null ? null
+                : new LoanOffer(annualRate, monthlyPayment, totalPayable, totalInterest);
         return Loan.restore(getId(), applicantId, amount, termMonths, status, reviewComment, reviewedBy, reviewedAt,
-                version, getCreatedAt(), getUpdatedAt());
+                offer, version, getCreatedAt(), getUpdatedAt());
     }
 }

@@ -6,6 +6,7 @@ import com.example.backend.loan.application.port.in.ReviewLoanUseCase;
 import com.example.backend.loan.domain.event.LoanStatusChanged;
 import com.example.backend.loan.domain.model.LoanStatus;
 import com.example.backend.loan.infrastructure.events.LoanEventStream;
+import com.example.backend.loan.infrastructure.web.dto.LoanDtos.ApproveLoanRequest;
 import com.example.backend.loan.infrastructure.web.dto.LoanDtos.LoanRequest;
 import com.example.backend.loan.infrastructure.web.dto.LoanDtos.LoanResponse;
 import com.example.backend.loan.infrastructure.web.dto.LoanDtos.RejectLoanRequest;
@@ -123,9 +124,10 @@ public class LoanController {
 
     @PatchMapping("/{id}/approve")
     @PreAuthorize(REVIEWER)
-    @Operation(summary = "Approve a PENDING loan")
-    public LoanResponse approve(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID id) {
-        return LoanResponse.from(reviews.approve(id, principal.userId()));
+    @Operation(summary = "Approve a PENDING loan at an effective annual rate; the applicant is notified with the installment")
+    public LoanResponse approve(@AuthenticationPrincipal AuthenticatedUser principal, @PathVariable UUID id,
+                                @Valid @RequestBody ApproveLoanRequest body) {
+        return LoanResponse.from(reviews.approve(id, principal.userId(), body.annualRate(), body.message()));
     }
 
     @PatchMapping("/{id}/reject")

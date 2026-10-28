@@ -85,11 +85,35 @@ describe('MyLoansStore', () => {
       status: 'REJECTED',
       reviewComment: 'Ingresos insuficientes',
       reviewedAt: '2026-10-28T11:00:00Z',
+      annualRate: null,
+      monthlyPayment: null,
+      totalPayable: null,
+      totalInterest: null,
     });
 
     expect(updated?.status).toBe('REJECTED');
     expect(store.loans()[0].reviewComment).toBe('Ingresos insuficientes');
     expect(store.applyStatusChange({ ...updated!, loanId: 'unknown' } as never)).toBeNull();
+  });
+
+  it('keeps the offer pushed with an approval', async () => {
+    api.mine!.mockReturnValue(of([loan()]));
+    await store.load();
+
+    const updated = store.applyStatusChange({
+      loanId: 'loan-1',
+      applicantId: 'user-1',
+      status: 'APPROVED',
+      reviewComment: null,
+      reviewedAt: '2026-10-28T11:00:00Z',
+      annualRate: 24,
+      monthlyPayment: 93_791.2,
+      totalPayable: 1_125_494.4,
+      totalInterest: 125_494.4,
+    });
+
+    expect(updated?.monthlyPayment).toBe(93_791.2);
+    expect(store.loans()[0].annualRate).toBe(24);
   });
 
   it('reports load errors without throwing', async () => {

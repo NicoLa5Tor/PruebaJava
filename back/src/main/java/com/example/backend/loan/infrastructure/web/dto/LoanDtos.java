@@ -1,6 +1,7 @@
 package com.example.backend.loan.infrastructure.web.dto;
 
 import com.example.backend.loan.domain.model.Loan;
+import com.example.backend.loan.domain.model.LoanOffer;
 import com.example.backend.loan.domain.model.LoanStatus;
 import com.example.backend.loan.domain.model.LoanView;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -30,6 +31,13 @@ public final class LoanDtos {
     public record RejectLoanRequest(@Size(max = 500) String comment) {
     }
 
+    /** {@code annualRate} is the effective annual rate (EA) in percent, e.g. 24.5. */
+    public record ApproveLoanRequest(
+            @NotNull @DecimalMin("0") @DecimalMax("100") @Digits(integer = 3, fraction = 2) BigDecimal annualRate,
+            @Size(max = 500) String message
+    ) {
+    }
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record LoanResponse(
             UUID id,
@@ -42,6 +50,10 @@ public final class LoanDtos {
             String reviewComment,
             UUID reviewedBy,
             Instant reviewedAt,
+            BigDecimal annualRate,
+            BigDecimal monthlyPayment,
+            BigDecimal totalPayable,
+            BigDecimal totalInterest,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -54,8 +66,11 @@ public final class LoanDtos {
         }
 
         private static LoanResponse of(Loan loan, String applicantEmail, String applicantName) {
+            LoanOffer offer = loan.offer();
             return new LoanResponse(loan.id(), loan.applicantId(), applicantEmail, applicantName, loan.amount(),
                     loan.termMonths(), loan.status(), loan.reviewComment(), loan.reviewedBy(), loan.reviewedAt(),
+                    offer == null ? null : offer.annualRate(), offer == null ? null : offer.monthlyPayment(),
+                    offer == null ? null : offer.totalPayable(), offer == null ? null : offer.totalInterest(),
                     loan.createdAt(), loan.updatedAt());
         }
     }

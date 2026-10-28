@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * A loan request and its review. Immutable: every transition returns a new instance, which makes it safe to keep
@@ -31,12 +32,15 @@ public final class Loan implements Serializable {
     private final String reviewComment;
     private final UUID reviewedBy;
     private final Instant reviewedAt;
+    /** Set only on approval: rate and repayment figures the applicant is told about. */
+    private final LoanOffer offer;
     private final Long version;
     private final Instant createdAt;
     private final Instant updatedAt;
 
     private Loan(UUID id, UUID applicantId, BigDecimal amount, int termMonths, LoanStatus status, String reviewComment,
-                 UUID reviewedBy, Instant reviewedAt, Long version, Instant createdAt, Instant updatedAt) {
+                 UUID reviewedBy, Instant reviewedAt, LoanOffer offer, Long version, Instant createdAt,
+                 Instant updatedAt) {
         this.id = id;
         this.applicantId = Objects.requireNonNull(applicantId, "applicantId");
         this.amount = Objects.requireNonNull(amount, "amount");
@@ -45,6 +49,7 @@ public final class Loan implements Serializable {
         this.reviewComment = reviewComment;
         this.reviewedBy = reviewedBy;
         this.reviewedAt = reviewedAt;
+        this.offer = offer;
         this.version = version;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -53,15 +58,16 @@ public final class Loan implements Serializable {
     /** A new PENDING request. */
     public static Loan request(UUID applicantId, BigDecimal amount, int termMonths) {
         validateTerms(amount, termMonths);
-        return new Loan(null, applicantId, amount, termMonths, LoanStatus.PENDING, null, null, null, null, null, null);
+        return new Loan(null, applicantId, amount, termMonths, LoanStatus.PENDING, null, null, null, null, null, null,
+                null);
     }
 
     /** Rebuilds a stored loan without re-running the creation rules. */
     public static Loan restore(UUID id, UUID applicantId, BigDecimal amount, int termMonths, LoanStatus status,
-                               String reviewComment, UUID reviewedBy, Instant reviewedAt, Long version,
-                               Instant createdAt, Instant updatedAt) {
-        return new Loan(id, applicantId, amount, termMonths, status, reviewComment, reviewedBy, reviewedAt, version,
-                createdAt, updatedAt);
+                               String reviewComment, UUID reviewedBy, Instant reviewedAt, LoanOffer offer,
+                               Long version, Instant createdAt, Instant updatedAt) {
+        return new Loan(id, applicantId, amount, termMonths, status, reviewComment, reviewedBy, reviewedAt, offer,
+                version, createdAt, updatedAt);
     }
 
     /** The applicant changes amount or term while nobody has reviewed the request yet. */
@@ -69,28 +75,35 @@ public final class Loan implements Serializable {
         ensureOwnedBy(requesterId);
         ensurePending("modified");
         validateTerms(newAmount, newTermMonths);
-        return new Loan(id, applicantId, newAmount, newTermMonths, status, null, null, null, version, createdAt, updatedAt);
+        return new Loan(id, applicantId, newAmount, newTermMonths, status, null, null, null, null, version, createdAt,
+                updatedAt);
     }
 
     public Loan cancel(UUID requesterId) {
         ensureOwnedBy(requesterId);
         ensurePending("cancelled");
-        return withStatus(LoanStatus.CANCELLED, null, null, null);
+        return withStatus(LoanStatus.CANCELLED, null, null, null, null);
     }
 
-    public Loan approve(UUID reviewerId, Instant now) {
-        return review(LoanStatus.APPROVED, reviewerId, null, now, "approved");
+    /**
+     * Approves at the given effective annual rate; the installment and totals are computed here so every approved
+     * loan carries consistent figures. {@code message} is an optional note for the applicant.
+     */
+    public Loan approve(UUID reviewerId, BigDecimal annualRatePercent, String message, Instant now) {
+        return review(LoanStatus.APPROVED, reviewerId, message, now, "approved",
+                () -> LoanOffer.calculate(amount, termMonths, annualRatePercent));
     }
 
     public Loan reject(UUID reviewerId, String comment, Instant now) {
-        return review(LoanStatus.REJECTED, reviewerId, comment, now, "rejected");
+        return review(LoanStatus.REJECTED, reviewerId, comment, now, "rejected", () -> null);
     }
 
     public boolean isOwnedBy(UUID userId) {
         return applicantId.equals(userId);
     }
 
-    private Loan review(LoanStatus decision, UUID reviewerId, String comment, Instant now, String action) {
+    private Loan review(LoanStatus decision, UUID reviewerId, String comment, Instant now, String action,
+                        Supplier<LoanOffer> offerSupplier) {
         Objects.requireNonNull(reviewerId, "reviewerId");
         ensurePending(action);
         if (isOwnedBy(reviewerId)) {
@@ -100,11 +113,11 @@ public final class Loan implements Serializable {
         if (normalized != null && normalized.length() > MAX_COMMENT_LENGTH) {
             throw new BusinessRuleException("The review comment cannot exceed %d characters.".formatted(MAX_COMMENT_LENGTH));
         }
-        return withStatus(decision, normalized, reviewerId, now);
+        return withStatus(decision, normalized, reviewerId, now, offerSupplier.get());
     }
 
-    private Loan withStatus(LoanStatus newStatus, String comment, UUID reviewer, Instant reviewTime) {
-        return new Loan(id, applicantId, amount, termMonths, newStatus, comment, reviewer, reviewTime, version,
+    private Loan withStatus(LoanStatus newStatus, String comment, UUID reviewer, Instant reviewTime, LoanOffer newOffer) {
+        return new Loan(id, applicantId, amount, termMonths, newStatus, comment, reviewer, reviewTime, newOffer, version,
                 createdAt, updatedAt);
     }
 
@@ -164,6 +177,11 @@ public final class Loan implements Serializable {
 
     public Instant reviewedAt() {
         return reviewedAt;
+    }
+
+    /** Null unless the loan was approved. */
+    public LoanOffer offer() {
+        return offer;
     }
 
     public Long version() {

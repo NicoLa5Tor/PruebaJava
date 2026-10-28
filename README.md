@@ -50,7 +50,7 @@ Las crea el seed al arrancar si `SEED_DEMO_USERS=true` (valor por defecto). La p
 | Rol | Email | Contraseña | Qué puede hacer |
 |---|---|---|---|
 | `USER` | `usuario@test.com` | `123` | Solicitar préstamos; ver, modificar y cancelar los suyos mientras estén pendientes |
-| `ADMIN` | `admin@test.com` | `123` | Ver todas las solicitudes, aprobar y rechazar |
+| `ADMIN` | `admin@test.com` | `123` | Ver todas las solicitudes; aprobar fijando la tasa (EA) o rechazar con motivo |
 | `SUPER_ADMIN` | `superadmin@test.com` | `123` | Todo lo de ADMIN, más administrar usuarios y roles |
 
 `ADMIN_EMAIL` define además un super administrador real, que entra con Logto (Google/Facebook). Si se configura `SUPER_ADMIN_PASSWORD`, también puede entrar con contraseña.
@@ -108,6 +108,7 @@ La única concesión pragmática es que los servicios de aplicación usan `@Serv
 | Login | Email y contraseña, tal como pide el enunciado, conviviendo con Logto (OIDC social) que ya existía. Ambos emiten el mismo JWT local. |
 | Base de datos | Flyway gestiona el esquema y Hibernate solo lo valida (`ddl-auto: validate`). Las bases creadas antes con `ddl-auto` se adoptan como V1 (`baseline-on-migrate`) y migran a V2 sin perder datos. |
 | Errores | Todo error responde `application/problem+json` (RFC 9457): 400 con `errors[]` por campo, 401, 403, 404, 409 (conflicto o concurrencia), 422 (regla de negocio) y 500 sin filtrar detalles. |
+| Aprobación con tasa y mensajes | Al aprobar, el admin fija la **tasa efectiva anual**. El dominio (`LoanOffer`) la convierte a mensual con `(1+EA)^(1/12) − 1` y calcula la cuota fija por amortización francesa (`P·i / (1 − (1+i)^−n)`), además del total a pagar y los intereses, todo con `BigDecimal`. Las condiciones quedan guardadas en el préstamo. En la misma transacción se crea una **notificación** para el cliente (módulo `notification`) con la cuota, el total y el mensaje del asesor; llega en vivo y queda en la bandeja (campana con contador). Al rechazar, la notificación incluye el motivo. |
 | Préstamos | Nunca se borran: se cancelan (`PATCH /{id}/cancel`), como se esperaría en un banco. Para evitar abusos, un usuario puede tener como máximo 3 solicitudes pendientes. |
 | Front: estado | Se usan servicios con signals, en la misma línea que el proyecto existente. `MyLoansStore` centraliza la lista, los contadores derivados (`computed`), la cancelación optimista con rollback y la aplicación de eventos SSE. Para este tamaño de aplicación NgRx agregaría mucho código repetitivo sin beneficio. |
 | Front: auth | El access token vive solo en memoria, el refresh token en la cookie HttpOnly y el interceptor renueva el token ante un 401. Los guards `canMatch` por rol (`roleGuard('ADMIN','SUPER_ADMIN')`) evitan incluso descargar los módulos que el usuario no puede ver. Son solo una ayuda de UX: el backend vuelve a validar todo. |
@@ -125,7 +126,9 @@ Todas las rutas cuelgan de `/api/v1`.
 | PUT | `/loans/{id}` · PATCH `/loans/{id}/cancel` | USER (dueño, préstamo pendiente) |
 | GET | `/loans/{id}` | dueño o revisor |
 | GET | `/loans?status=&page=&size=` | ADMIN, SUPER_ADMIN |
-| PATCH | `/loans/{id}/approve` · `/loans/{id}/reject` | ADMIN, SUPER_ADMIN |
+| PATCH | `/loans/{id}/approve` (body `{annualRate, message?}`) · `/loans/{id}/reject` (body `{comment?}`) | ADMIN, SUPER_ADMIN |
+| GET | `/notifications` · `/notifications/unread-count` | autenticado (solo las propias) |
+| PATCH | `/notifications/{id}/read` · `/notifications/read-all` | autenticado (solo las propias) |
 | GET/PUT | `/users/me` | autenticado |
 | GET/POST/PUT/DELETE | `/users`, `/users/{id}`, PUT `/users/{id}/password` | SUPER_ADMIN |
 

@@ -43,7 +43,7 @@ class LoanIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.content[?(@.id == '%s')].applicantEmail".formatted(loanId))
                         .value(applicant.getEmail()));
 
-        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+        mockMvc.perform(approveRequest(loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.reviewedBy").value(admin.getId().toString()));
@@ -57,6 +57,48 @@ class LoanIntegrationTest extends IntegrationTest {
         Integer audits = jdbc.queryForObject(
                 "select count(*) from loan_reviews where loan_id = ?::uuid and decision = 'APPROVED'", Integer.class, loanId);
         assertThat(audits).isEqualTo(1);
+    }
+
+    @Test
+    void approvalSetsTheOfferAndNotifiesTheApplicant() throws Exception {
+        User applicant = createUser("notified", UserRole.USER);
+        User admin = createUser("rate-setter", UserRole.ADMIN);
+        String loanId = requestLoan(applicant, "1000000", 12);
+
+        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"annualRate\":150}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"annualRate\":26.82,\"message\":\"Bienvenido\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.annualRate").value(26.82))
+                .andExpect(jsonPath("$.monthlyPayment").value(org.hamcrest.Matchers.closeTo(94_559.6, 5.0)))
+                .andExpect(jsonPath("$.reviewComment").value("Bienvenido"));
+
+        mockMvc.perform(get("/api/v1/notifications/unread-count").header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
+                .andExpect(jsonPath("$.unread").value(1));
+        String inbox = mockMvc.perform(get("/api/v1/notifications").header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].type").value("LOAN_APPROVED"))
+                .andExpect(jsonPath("$[0].loanId").value(loanId))
+                .andExpect(jsonPath("$[0].message").value(org.hamcrest.Matchers.containsString("26,82 % EA")))
+                .andExpect(jsonPath("$[0].read").value(false))
+                .andReturn().getResponse().getContentAsString();
+        String notificationId = JsonPath.read(inbox, "$[0].id");
+
+        // Nobody else can read or mark someone's notifications.
+        mockMvc.perform(patch("/api/v1/notifications/{id}/read", notificationId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(patch("/api/v1/notifications/{id}/read", notificationId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.read").value(true));
+        mockMvc.perform(get("/api/v1/notifications/unread-count").header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
+                .andExpect(jsonPath("$.unread").value(0));
     }
 
     @Test
@@ -78,14 +120,14 @@ class LoanIntegrationTest extends IntegrationTest {
         User admin = createUser("not-an-applicant", UserRole.ADMIN);
         String loanId = requestLoan(applicant, "2000", 6);
 
-        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId).header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
+        mockMvc.perform(approveRequest(loanId).header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/loans").header(HttpHeaders.AUTHORIZATION, bearer(applicant)))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/loans").header(HttpHeaders.AUTHORIZATION, bearer(admin))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":1000,\"termMonths\":12}"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId))
+        mockMvc.perform(approveRequest(loanId))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -95,7 +137,7 @@ class LoanIntegrationTest extends IntegrationTest {
         User admin = createUser("first-reviewer", UserRole.ADMIN);
         String loanId = requestLoan(applicant, "3000", 12);
 
-        mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+        mockMvc.perform(approveRequest(loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isOk());
         mockMvc.perform(patch("/api/v1/loans/{id}/reject", loanId).header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isConflict())
@@ -109,7 +151,7 @@ class LoanIntegrationTest extends IntegrationTest {
         User secondAdmin = createUser("race-admin-2", UserRole.ADMIN);
         String loanId = requestLoan(applicant, "4000", 12);
 
-        Callable<Integer> approve = () -> mockMvc.perform(patch("/api/v1/loans/{id}/approve", loanId)
+        Callable<Integer> approve = () -> mockMvc.perform(approveRequest(loanId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(firstAdmin))).andReturn().getResponse().getStatus();
         Callable<Integer> reject = () -> mockMvc.perform(patch("/api/v1/loans/{id}/reject", loanId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(secondAdmin))).andReturn().getResponse().getStatus();
@@ -191,6 +233,11 @@ class LoanIntegrationTest extends IntegrationTest {
         mockMvc.perform(put("/api/v1/users/{id}", applicant.getId()).header(HttpHeaders.AUTHORIZATION, bearer(superAdmin))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"INACTIVE\"}"))
                 .andExpect(status().isOk());
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder approveRequest(String loanId) {
+        return patch("/api/v1/loans/{id}/approve", loanId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"annualRate\":24,\"message\":\"Bienvenido\"}");
     }
 
     private String requestLoan(User applicant, String amount, int termMonths) throws Exception {

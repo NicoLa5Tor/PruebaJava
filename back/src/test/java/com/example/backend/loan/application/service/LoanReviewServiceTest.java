@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.example.backend.loan.application.port.out.ApplicantNotifierPort;
 import com.example.backend.loan.application.port.out.LoanEventPublisherPort;
 import com.example.backend.loan.application.port.out.LoanRepositoryPort;
 import com.example.backend.loan.application.port.out.LoanReviewLogPort;
@@ -38,15 +39,17 @@ class LoanReviewServiceTest {
     private static final UUID LOAN_ID = UUID.randomUUID();
     private static final UUID APPLICANT = UUID.randomUUID();
     private static final UUID REVIEWER = UUID.randomUUID();
+    private static final BigDecimal RATE = new BigDecimal("24");
 
     @Mock private LoanRepositoryPort loans;
     @Mock private LoanReviewLogPort reviewLog;
     @Mock private LoanEventPublisherPort events;
+    @Mock private ApplicantNotifierPort notifier;
     private LoanReviewService service;
 
     @BeforeEach
     void setUp() {
-        service = new LoanReviewService(loans, reviewLog, events, Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new LoanReviewService(loans, reviewLog, events, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -54,15 +57,16 @@ class LoanReviewServiceTest {
         when(loans.findByIdForUpdate(LOAN_ID)).thenReturn(Optional.of(loan(LoanStatus.PENDING)));
         when(loans.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Loan approved = service.approve(LOAN_ID, REVIEWER);
+        Loan approved = service.approve(LOAN_ID, REVIEWER, RATE, null);
 
         assertThat(approved.status()).isEqualTo(LoanStatus.APPROVED);
         assertThat(approved.reviewedBy()).isEqualTo(REVIEWER);
         assertThat(approved.reviewedAt()).isEqualTo(NOW);
-        InOrder order = inOrder(loans, reviewLog, events);
+        InOrder order = inOrder(loans, reviewLog, notifier, events);
         order.verify(loans).findByIdForUpdate(LOAN_ID);
         order.verify(loans).save(approved);
         order.verify(reviewLog).record(new LoanReview(LOAN_ID, REVIEWER, LoanStatus.APPROVED, null, NOW));
+        order.verify(notifier).notifyDecision(approved);
         order.verify(events).publish(LoanStatusChanged.of(approved));
     }
 
@@ -84,9 +88,9 @@ class LoanReviewServiceTest {
     void unknownLoanIsNotFound() {
         when(loans.findByIdForUpdate(LOAN_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.approve(LOAN_ID, REVIEWER)).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service.approve(LOAN_ID, REVIEWER, RATE, null)).isInstanceOf(ResourceNotFoundException.class);
         verify(loans, never()).save(any());
-        verifyNoInteractions(reviewLog, events);
+        verifyNoInteractions(reviewLog, notifier, events);
     }
 
     @Test
@@ -95,7 +99,7 @@ class LoanReviewServiceTest {
 
         assertThatThrownBy(() -> service.reject(LOAN_ID, REVIEWER, null)).isInstanceOf(InvalidLoanStateException.class);
         verify(loans, never()).save(any());
-        verifyNoInteractions(reviewLog, events);
+        verifyNoInteractions(reviewLog, notifier, events);
     }
 
     @Test
@@ -105,11 +109,11 @@ class LoanReviewServiceTest {
         RuntimeException failure = new IllegalStateException("audit table unavailable");
         org.mockito.Mockito.doThrow(failure).when(reviewLog).record(any());
 
-        assertThatThrownBy(() -> service.approve(LOAN_ID, REVIEWER)).isSameAs(failure);
-        verifyNoInteractions(events);
+        assertThatThrownBy(() -> service.approve(LOAN_ID, REVIEWER, RATE, null)).isSameAs(failure);
+        verifyNoInteractions(notifier, events);
     }
 
     private static Loan loan(LoanStatus status) {
-        return Loan.restore(LOAN_ID, APPLICANT, new BigDecimal("5000"), 12, status, null, null, null, 0L, NOW, NOW);
+        return Loan.restore(LOAN_ID, APPLICANT, new BigDecimal("5000"), 12, status, null, null, null, null, 0L, NOW, NOW);
     }
 }

@@ -80,6 +80,10 @@ export class MyLoansStore {
       status: change.status,
       reviewComment: change.reviewComment ?? undefined,
       reviewedAt: change.reviewedAt ?? undefined,
+      annualRate: change.annualRate ?? undefined,
+      monthlyPayment: change.monthlyPayment ?? undefined,
+      totalPayable: change.totalPayable ?? undefined,
+      totalInterest: change.totalInterest ?? undefined,
     };
     this.replace(updated);
     return updated;

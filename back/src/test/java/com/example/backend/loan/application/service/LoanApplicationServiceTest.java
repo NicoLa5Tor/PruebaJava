@@ -79,7 +79,7 @@ class LoanApplicationServiceTest {
 
     private static Loan pendingOf(UUID applicant) {
         Instant now = Instant.now();
-        return Loan.restore(LOAN_ID, applicant, new BigDecimal("1000"), 12, LoanStatus.PENDING, null, null, null, 0L,
+        return Loan.restore(LOAN_ID, applicant, new BigDecimal("1000"), 12, LoanStatus.PENDING, null, null, null, null, 0L,
                 now, now);
     }
 }

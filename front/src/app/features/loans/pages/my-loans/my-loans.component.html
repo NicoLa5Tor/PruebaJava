@@ -137,6 +137,13 @@
                 </div>
                 <span class="status-badge" [class]="statusBadges[loan.status]">{{ statusLabels[loan.status] }}</span>
               </div>
+              @if (loan.status === 'APPROVED' && loan.monthlyPayment) {
+                <div class="offer rounded-3 mt-2 p-2 px-3 small d-flex flex-wrap gap-3">
+                  <span>Tasa <strong class="amount">{{ loan.annualRate | number: '1.0-2' }} % EA</strong></span>
+                  <span>Cuota <strong class="amount">{{ loan.monthlyPayment | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</strong> × {{ loan.termMonths }}</span>
+                  <span>Total <strong class="amount">{{ loan.totalPayable | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</strong></span>
+                </div>
+              }
               @if (loan.reviewComment) {
                 <p class="small mb-0 mt-2 text-body-secondary">
                   <i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>{{ loan.reviewComment }}

@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, catchError, of, switchMap, tap } from 'rxjs';
 import { PageResponse } from '../../../../core/api/page-response';
@@ -9,6 +9,7 @@ import { problemMessage } from '../../../../core/api/problem-message';
 import { AuthSessionService } from '../../../../core/auth/auth-session.service';
 import { displayNameOf } from '../../../../core/auth/auth.models';
 import { LOAN_LIMITS, LOAN_STATUS_BADGES, LOAN_STATUS_LABELS, Loan, LoanStatus } from '../../data-access/loan.models';
+import { calculateOffer, monthlyRateFromEffectiveAnnual } from '../../data-access/loan-offer';
 import { LoansApiService } from '../../data-access/loans-api.service';
 
 const PAGE_SIZE = 10;
@@ -21,7 +22,7 @@ interface StatusTab {
 /** Review queue for ADMIN and SUPER_ADMIN: filter by status, approve or reject pending requests. */
 @Component({
   selector: 'app-loan-review',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe],
+  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, DecimalPipe],
   templateUrl: './loan-review.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -57,6 +58,34 @@ export class LoanReviewComponent {
   protected readonly rejecting = signal<Loan | null>(null);
   protected readonly rejectForm = inject(NonNullableFormBuilder).group({
     comment: ['', Validators.maxLength(LOAN_LIMITS.maxCommentLength)],
+  });
+  protected readonly approving = signal<Loan | null>(null);
+  protected readonly approveForm = inject(NonNullableFormBuilder).group({
+    annualRate: [
+      24 as number | null,
+      [
+        Validators.required,
+        Validators.min(0),
+        Validators.max(LOAN_LIMITS.maxAnnualRate),
+        Validators.pattern(/^\d+(\.\d{1,2})?$/),
+      ],
+    ],
+    message: ['', Validators.maxLength(LOAN_LIMITS.maxCommentLength)],
+  });
+  private readonly approveRate = toSignal(this.approveForm.controls.annualRate.valueChanges, {
+    initialValue: this.approveForm.controls.annualRate.value,
+  });
+  /** What the applicant will be offered; the server recomputes the same figures on approval. */
+  protected readonly offerPreview = computed(() => {
+    const loan = this.approving();
+    const rate = this.approveRate();
+    if (!loan || rate === null || this.approveForm.controls.annualRate.invalid) {
+      return null;
+    }
+    return {
+      ...calculateOffer(loan.amount, loan.termMonths, Number(rate)),
+      monthlyRatePercent: monthlyRateFromEffectiveAnnual(Number(rate)) * 100,
+    };
   });
 
   private readonly query = computed(() => ({
@@ -104,8 +133,24 @@ export class LoanReviewComponent {
     return loan.applicantName ? `${loan.applicantName} · ${loan.applicantEmail}` : (loan.applicantEmail ?? '');
   }
 
-  protected approve(loan: Loan): void {
-    this.decide(loan, this.api.approve(loan.id), 'aprobado');
+  protected openApprove(loan: Loan): void {
+    this.approveForm.reset({ annualRate: 24, message: '' });
+    this.approving.set(loan);
+  }
+
+  protected confirmApprove(): void {
+    const loan = this.approving();
+    if (!loan || this.approveForm.invalid) {
+      this.approveForm.markAllAsTouched();
+      return;
+    }
+    const { annualRate, message } = this.approveForm.getRawValue();
+    this.decide(
+      loan,
+      this.api.approve(loan.id, { annualRate: Number(annualRate), message: message.trim() || null }),
+      'aprobado',
+      () => this.approving.set(null),
+    );
   }
 
   protected openReject(loan: Loan): void {

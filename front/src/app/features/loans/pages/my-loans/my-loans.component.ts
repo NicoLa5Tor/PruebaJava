@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -15,7 +15,7 @@ const HIGHLIGHT_MS = 2_500;
 
 @Component({
   selector: 'app-my-loans',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe],
+  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, DecimalPipe],
   templateUrl: './my-loans.component.html',
   providers: [MyLoansStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,7 +62,10 @@ export class MyLoansComponent {
         const updated = this.store.applyStatusChange(change);
         if (updated) {
           this.flash(updated.id);
-          this.showToast(`Tu préstamo por ${formatAmount(updated.amount)} fue ${LOAN_STATUS_LABELS[updated.status].toLowerCase()}.`);
+          const installment = updated.monthlyPayment ? ` Cuota: ${formatAmount(updated.monthlyPayment)} al mes.` : '';
+          this.showToast(
+            `Tu préstamo por ${formatAmount(updated.amount)} fue ${LOAN_STATUS_LABELS[updated.status].toLowerCase()}.${installment}`,
+          );
         }
       });
   }
