@@ -13,8 +13,8 @@ Internet ─▶ Cloudflare (TLS, WAF, Turnstile) ─▶ cloudflared ─▶ nginx
 | Carpeta | Imagen | Contenedor |
 |---|---|---|
 | `project/database` | `postgres:17-alpine` (datos en `volumes/postgres`) | `makers-database` |
-| `project/backend` | `nicoscale/backmakers:1.0.0` | `makers-backend` |
-| `project/frontend` | `nicoscale/frontmakers:1.0.2` | `makers-frontend` |
+| `project/backend` | `nicoscale/backmakers:1.1.0` | `makers-backend` |
+| `project/frontend` | `nicoscale/frontmakers:1.1.0` | `makers-frontend` |
 | `nginx` | `nginx:1.29-alpine` | `makers-nginx` |
 | `cloudflare` | `cloudflare/cloudflared` | `makers-cloudflared` |
 

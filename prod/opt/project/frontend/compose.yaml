@@ -3,7 +3,7 @@ name: makers-frontend
 
 services:
   frontend:
-    image: nicoscale/frontmakers:1.0.2
+    image: nicoscale/frontmakers:1.1.0
     container_name: makers-frontend
     restart: unless-stopped
     env_file: .env

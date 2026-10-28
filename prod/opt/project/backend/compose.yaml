@@ -3,7 +3,7 @@ name: makers-backend
 
 services:
   backend:
-    image: nicoscale/backmakers:1.0.0
+    image: nicoscale/backmakers:1.1.0
     container_name: makers-backend
     restart: unless-stopped
     env_file: .env
