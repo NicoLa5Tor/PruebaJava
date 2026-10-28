@@ -1,0 +1,120 @@
+<main class="container py-4 py-lg-5" style="max-width: 860px">
+  <a class="btn btn-link px-0 mb-3 text-decoration-none" routerLink="/admin/users">
+    <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver a usuarios
+  </a>
+
+  <header class="d-flex align-items-center gap-3 mb-4">
+    @if (user(); as current) {
+      <app-user-avatar [name]="displayNameOf(current)" [avatarUrl]="current.avatarUrl" [size]="56" />
+    }
+    <div>
+      <h1 class="h3 fw-bold mb-1">{{ isEdit() ? 'Editar usuario' : 'Nuevo usuario' }}</h1>
+      <p class="text-body-secondary mb-0">
+        @if (user(); as current) {
+          Creado el {{ current.createdAt | date: 'medium' }}
+        } @else if (!isEdit()) {
+          La persona podrá entrar con Logto usando este mismo correo.
+        }
+      </p>
+    </div>
+  </header>
+
+  @if (error(); as message) {
+    <div class="alert alert-danger" role="alert">{{ message }}</div>
+  }
+
+  @if (loading()) {
+    <div class="card border-0 shadow-sm placeholder-glow" aria-hidden="true">
+      <div class="card-body p-4">
+        <span class="placeholder col-3 mb-3 d-block"></span>
+        <div class="row g-3">
+          <div class="col-12"><span class="placeholder col-12 rounded" style="height: 38px"></span></div>
+          <div class="col-sm-6"><span class="placeholder col-12 rounded" style="height: 38px"></span></div>
+          <div class="col-sm-6"><span class="placeholder col-12 rounded" style="height: 38px"></span></div>
+          <div class="col-sm-6"><span class="placeholder col-12 rounded" style="height: 38px"></span></div>
+          <div class="col-sm-6"><span class="placeholder col-12 rounded" style="height: 38px"></span></div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <form class="card border-0 shadow-sm" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="card-body p-4">
+        <h2 class="h6 text-uppercase text-body-secondary fw-semibold mb-3">Datos personales</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-12">
+            <label class="form-label" for="email">Correo <span class="text-danger">*</span></label>
+            <input id="email" class="form-control" type="email" formControlName="email" autocomplete="off"
+              [class.is-invalid]="form.controls.email.invalid && form.controls.email.touched" />
+            <div class="invalid-feedback">Ingresa un correo válido.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="firstName">Nombre</label>
+            <input id="firstName" class="form-control" formControlName="firstName"
+              [class.is-invalid]="form.controls.firstName.invalid && form.controls.firstName.touched" />
+            <div class="invalid-feedback">Máximo 100 caracteres.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="lastName">Apellido</label>
+            <input id="lastName" class="form-control" formControlName="lastName"
+              [class.is-invalid]="form.controls.lastName.invalid && form.controls.lastName.touched" />
+            <div class="invalid-feedback">Máximo 100 caracteres.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="displayName">Nombre para mostrar</label>
+            <input id="displayName" class="form-control" formControlName="displayName"
+              [class.is-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched" />
+            <div class="invalid-feedback">Máximo 150 caracteres.</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="avatarUrl">URL de la foto</label>
+            <input id="avatarUrl" class="form-control" type="url" formControlName="avatarUrl" placeholder="https://…"
+              [class.is-invalid]="form.controls.avatarUrl.invalid && form.controls.avatarUrl.touched" />
+            <div class="invalid-feedback">Debe empezar por http:// o https://.</div>
+          </div>
+        </div>
+
+        <h2 class="h6 text-uppercase text-body-secondary fw-semibold mb-3">Acceso</h2>
+        @if (isSelf()) {
+          <div class="alert alert-info small py-2" role="note">
+            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+            No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.
+          </div>
+        }
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="form-check form-switch">
+              <input id="admin" class="form-check-input" type="checkbox" role="switch" formControlName="admin" />
+              <label class="form-check-label" for="admin">Administrador</label>
+            </div>
+            <div class="form-text">Todos los usuarios tienen el rol Usuario.</div>
+          </div>
+          @if (isEdit()) {
+            <div class="col-sm-6">
+              <label class="form-label" for="status">Estado</label>
+              <select id="status" class="form-select" formControlName="status">
+                <option value="ACTIVE">Activo</option>
+                <option value="INACTIVE">Inactivo — no puede iniciar sesión</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input id="emailVerified" class="form-check-input" type="checkbox" formControlName="emailVerified" />
+                <label class="form-check-label" for="emailVerified">Correo verificado</label>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card-footer bg-body d-flex justify-content-end gap-2 p-3">
+        <a class="btn btn-outline-secondary" routerLink="/admin/users">Cancelar</a>
+        <button class="btn btn-primary" type="submit" [disabled]="saving()">
+          @if (saving()) {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+          }
+          {{ isEdit() ? 'Guardar cambios' : 'Crear usuario' }}
+        </button>
+      </div>
+    </form>
+  }
+</main>

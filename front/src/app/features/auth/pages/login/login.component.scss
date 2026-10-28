@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+
+.login-page {
+  background: var(--bs-tertiary-bg);
+}
+
+.brand-panel {
+  background: linear-gradient(145deg, #0d6efd, #052c65);
+}
+
+.brand-mark i {
+  font-size: 1.35em;
+}
+
+.login-card {
+  max-width: 28rem;
+}
+
+.social-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+}

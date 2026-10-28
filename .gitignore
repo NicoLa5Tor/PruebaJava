@@ -1,0 +1,37 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Build output
+target/
+dist/
+out-tsc/
+coverage/
+
+# Dependencies and caches
+node_modules/
+.angular/
+.sass-cache/
+
+# Logs
+*.log
+
+# IDEs and editors
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+*.sublime-workspace
+
+# AI tooling and local assistant data
+.claude/
+CLAUDE.md
+.mcp.json
+.codebase-memory/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,201 @@
+<main class="container py-4 py-lg-5">
+  <header class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+      <h1 class="h3 fw-bold mb-1">Usuarios</h1>
+      <p class="text-body-secondary mb-0">
+        Administra cuentas, roles y accesos.
+        @if (page(); as current) {
+          <span class="badge text-bg-light border ms-1">{{ current.totalElements }} en total</span>
+        }
+      </p>
+    </div>
+    <a class="btn btn-primary" routerLink="/admin/users/new">
+      <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Nuevo usuario
+    </a>
+  </header>
+
+  @if (notice(); as message) {
+    <div class="alert alert-success alert-dismissible" role="status">
+      {{ message }}
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="notice.set(null)"></button>
+    </div>
+  }
+  @if (error(); as message) {
+    <div class="alert alert-danger alert-dismissible" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" aria-label="Cerrar" (click)="error.set(null)"></button>
+    </div>
+  }
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-body border-bottom p-3">
+      <div class="input-group">
+        <span class="input-group-text bg-body"><i class="bi bi-search" aria-hidden="true"></i></span>
+        <input
+          #searchBox
+          class="form-control"
+          type="search"
+          placeholder="Buscar por correo o nombre"
+          aria-label="Buscar usuarios"
+          (input)="onSearch(searchBox.value)"
+        />
+      </div>
+    </div>
+
+    <div class="table-responsive position-relative">
+      @if (loading()) {
+        <div class="position-absolute top-0 start-0 w-100">
+          <div class="progress rounded-0" style="height: 3px" role="progressbar" aria-label="Cargando">
+            <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
+          </div>
+        </div>
+      }
+
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" class="ps-3">Usuario</th>
+            <th scope="col">Roles</th>
+            <th scope="col">Estado</th>
+            <th scope="col" class="d-none d-md-table-cell">Creado</th>
+            <th scope="col" class="text-end pe-3">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of page()?.content ?? []; track user.id) {
+            @let isSelf = user.id === currentUserId();
+            <tr>
+              <td class="ps-3">
+                <div class="d-flex align-items-center gap-3">
+                  <app-user-avatar [name]="displayNameOf(user)" [avatarUrl]="user.avatarUrl" [size]="36" />
+                  <div class="min-w-0">
+                    <div class="fw-semibold text-truncate">
+                      {{ displayNameOf(user) }}
+                      @if (isSelf) {
+                        <span class="badge text-bg-info ms-1">Tú</span>
+                      }
+                    </div>
+                    <div class="small text-body-secondary text-truncate">{{ user.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                @for (role of user.roles; track role) {
+                  <span class="badge rounded-pill me-1" [class]="role === 'ADMIN' ? 'text-bg-primary' : 'text-bg-secondary'">
+                    {{ roleLabels[role] }}
+                  </span>
+                }
+              </td>
+              <td>
+                <span class="badge rounded-pill" [class]="user.status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-danger'">
+                  {{ statusLabels[user.status] }}
+                </span>
+              </td>
+              <td class="d-none d-md-table-cell small text-body-secondary">{{ user.createdAt | date: 'mediumDate' }}</td>
+              <td class="text-end pe-3 text-nowrap">
+                <a class="btn btn-sm btn-outline-primary" [routerLink]="['/admin/users', user.id]" title="Editar">
+                  <i class="bi bi-pencil" aria-hidden="true"></i><span class="visually-hidden">Editar</span>
+                </a>
+                <button
+                  class="btn btn-sm ms-1"
+                  type="button"
+                  [class]="user.status === 'ACTIVE' ? 'btn-outline-warning' : 'btn-outline-success'"
+                  [title]="user.status === 'ACTIVE' ? 'Desactivar' : 'Activar'"
+                  [disabled]="isSelf || busyId() === user.id"
+                  (click)="toggleStatus(user)"
+                >
+                  <i class="bi" [class]="user.status === 'ACTIVE' ? 'bi-pause-circle' : 'bi-play-circle'" aria-hidden="true"></i>
+                  <span class="visually-hidden">{{ user.status === 'ACTIVE' ? 'Desactivar' : 'Activar' }}</span>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger ms-1"
+                  type="button"
+                  title="Eliminar"
+                  [disabled]="isSelf || busyId() === user.id"
+                  (click)="pendingDelete.set(user)"
+                >
+                  <i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Eliminar</span>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            @if (loading()) {
+              @for (row of placeholderRows; track row) {
+                <tr class="placeholder-glow" aria-hidden="true">
+                  <td class="ps-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="placeholder rounded-circle" style="width: 36px; height: 36px"></span>
+                      <div class="flex-grow-1">
+                        <span class="placeholder col-7 d-block mb-1"></span>
+                        <span class="placeholder placeholder-sm col-9 d-block"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="placeholder col-8 rounded-pill"></span></td>
+                  <td><span class="placeholder col-6 rounded-pill"></span></td>
+                  <td class="d-none d-md-table-cell"><span class="placeholder col-7"></span></td>
+                  <td class="text-end pe-3"><span class="placeholder col-6"></span></td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="5" class="text-center text-body-secondary py-5">
+                  <i class="bi bi-people fs-2 d-block mb-2" aria-hidden="true"></i>
+                  No se encontraron usuarios.
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (page(); as current) {
+      @if (current.totalPages > 1) {
+        <div class="card-footer bg-body d-flex align-items-center justify-content-between p-3">
+          <span class="small text-body-secondary">Página {{ current.page + 1 }} de {{ current.totalPages }}</span>
+          <nav aria-label="Paginación de usuarios">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item" [class.disabled]="current.page === 0">
+                <button class="page-link" type="button" (click)="goToPage(current.page - 1)">Anterior</button>
+              </li>
+              <li class="page-item" [class.disabled]="current.page + 1 >= current.totalPages">
+                <button class="page-link" type="button" (click)="goToPage(current.page + 1)">Siguiente</button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      }
+    }
+  </div>
+</main>
+
+@if (pendingDelete(); as user) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="delete-title" class="modal-title h5">Eliminar usuario</h2>
+          <button type="button" class="btn-close" aria-label="Cerrar" (click)="pendingDelete.set(null)"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">¿Seguro que quieres eliminar a <strong>{{ displayNameOf(user) }}</strong>?</p>
+          <p class="small text-body-secondary mb-0">
+            Se cerrarán sus sesiones y no se puede deshacer. Si vuelve a iniciar sesión con Logto se le creará una cuenta
+            nueva; para bloquear el acceso usa "Desactivar".
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" (click)="pendingDelete.set(null)">Cancelar</button>
+          <button type="button" class="btn btn-danger" [disabled]="busyId() === user.id" (click)="confirmDelete()">
+            @if (busyId() === user.id) {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            }
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}

@@ -1,0 +1,71 @@
+<main class="d-flex min-vh-100 align-items-center justify-content-center bg-body-tertiary p-3 p-sm-4">
+  <div class="card border-0 shadow-sm w-100" style="max-width: 520px">
+    <div class="card-body p-4 p-sm-5">
+      <div class="brand-mark text-primary d-inline-flex align-items-center gap-2 fw-semibold fs-5 mb-4">
+        <i class="bi bi-shield-check" aria-hidden="true"></i>
+        <span>Frontend</span>
+      </div>
+
+      <header class="mb-4">
+        <h1 class="h3 fw-bold mb-2">Crea tu cuenta</h1>
+        <p class="text-body-secondary mb-0">
+          Es tu primera vez aquí. Confirma tus datos para terminar el registro.
+        </p>
+      </header>
+
+      @if (error(); as message) {
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="mb-3">
+          <label class="form-label" for="email">Correo</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+            <input id="email" class="form-control" [value]="profile().email" readonly aria-describedby="email-help" />
+            <span class="input-group-text text-success" title="Verificado por tu proveedor">
+              <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
+            </span>
+          </div>
+          <div id="email-help" class="form-text">Tu cuenta quedará asociada a este correo verificado.</div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label" for="firstName">Nombre <span class="text-danger">*</span></label>
+            <input id="firstName" class="form-control" formControlName="firstName" autocomplete="given-name"
+              [class.is-invalid]="form.controls.firstName.invalid && form.controls.firstName.touched" />
+            <div class="invalid-feedback">
+              {{ form.controls.firstName.hasError('required') ? 'El nombre es obligatorio.' : 'Máximo 100 caracteres.' }}
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="lastName">Apellido</label>
+            <input id="lastName" class="form-control" formControlName="lastName" autocomplete="family-name"
+              [class.is-invalid]="form.controls.lastName.invalid && form.controls.lastName.touched" />
+            <div class="invalid-feedback">Máximo 100 caracteres.</div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="displayName">Nombre para mostrar</label>
+          <input id="displayName" class="form-control" formControlName="displayName" autocomplete="nickname"
+            placeholder="Cómo quieres que te vean los demás"
+            [class.is-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched" />
+          <div class="invalid-feedback">Máximo 150 caracteres.</div>
+        </div>
+
+        <button class="btn btn-primary w-100 mb-2" type="submit" [disabled]="saving() || cancelling()">
+          @if (saving()) {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+          }
+          Crear cuenta
+        </button>
+        <button class="btn btn-link w-100 text-body-secondary" type="button" [disabled]="saving() || cancelling()"
+          (click)="cancel()">
+          No soy yo, usar otra cuenta
+        </button>
+      </form>
+    </div>
+  </div>
+</main>

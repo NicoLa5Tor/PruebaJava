@@ -1,0 +1,11 @@
+<main class="d-flex min-vh-100 align-items-center justify-content-center p-4">
+  <div class="text-center">
+    @if (error(); as message) {
+      <p class="text-danger" role="alert">{{ message }}</p>
+      <a class="btn btn-primary" routerLink="/login">Volver al inicio de sesión</a>
+    } @else {
+      <div class="spinner-border text-primary mb-3" aria-hidden="true"></div>
+      <p class="mb-0">Completando inicio de sesión...</p>
+    }
+  </div>
+</main>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Frontend</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Inline so the splash renders before the stylesheet and the bundle arrive. -->
+  <style>
+    .boot-splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #6c757d; background: #f8f9fa; }
+    .boot-splash__spinner { width: 2.5rem; height: 2.5rem; border: .25rem solid #cfe2ff; border-top-color: #0d6efd; border-radius: 50%; animation: boot-spin .8s linear infinite; }
+    @keyframes boot-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .boot-splash__spinner { animation-duration: 2.4s; } }
+  </style>
+</head>
+<body>
+  <app-root>
+    <!-- Replaced by Angular once the session is restored and the first route renders. -->
+    <div class="boot-splash" role="status">
+      <div class="boot-splash__spinner" aria-hidden="true"></div>
+      <span>Cargando…</span>
+    </div>
+  </app-root>
+</body>
+</html>

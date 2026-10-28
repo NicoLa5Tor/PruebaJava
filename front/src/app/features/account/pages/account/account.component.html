@@ -1,0 +1,107 @@
+<main class="container py-4 py-lg-5">
+  <header class="mb-4">
+    <h1 class="h3 fw-bold mb-1">Mi cuenta</h1>
+    <p class="text-body-secondary mb-0">Consulta tu información y actualiza tu perfil.</p>
+  </header>
+
+  @if (user(); as current) {
+    <div class="row g-4">
+      <aside class="col-12 col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body text-center p-4">
+            <app-user-avatar class="mb-3" [name]="userName()" [avatarUrl]="current.avatarUrl" [size]="96" />
+            <h2 class="h5 fw-semibold mb-1">{{ userName() }}</h2>
+            <p class="text-body-secondary small mb-3 text-break">{{ current.email }}</p>
+            <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+              @for (role of current.roles; track role) {
+                <span class="badge rounded-pill" [class]="role === 'ADMIN' ? 'text-bg-primary' : 'text-bg-secondary'">
+                  {{ roleLabels[role] }}
+                </span>
+              }
+              <span class="badge rounded-pill" [class]="current.status === 'ACTIVE' ? 'text-bg-success' : 'text-bg-danger'">
+                {{ statusLabels[current.status] }}
+              </span>
+            </div>
+            <ul class="list-group list-group-flush text-start small">
+              <li class="list-group-item d-flex justify-content-between px-0">
+                <span class="text-body-secondary">Correo verificado</span>
+                @if (current.emailVerified) {
+                  <span class="text-success"><i class="bi bi-patch-check-fill me-1" aria-hidden="true"></i>Sí</span>
+                } @else {
+                  <span class="text-warning">No</span>
+                }
+              </li>
+              <li class="list-group-item d-flex justify-content-between px-0">
+                <span class="text-body-secondary">Miembro desde</span>
+                <span>{{ current.createdAt | date: 'mediumDate' }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+
+      <section class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h2 class="h5 fw-semibold mb-4">Datos del perfil</h2>
+
+            @if (saved()) {
+              <div class="alert alert-success d-flex align-items-center gap-2" role="status">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>Tu perfil se guardó correctamente.
+              </div>
+            }
+            @if (error(); as message) {
+              <div class="alert alert-danger" role="alert">{{ message }}</div>
+            }
+
+            <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+              <div class="row g-3">
+                <div class="col-sm-6">
+                  <label class="form-label" for="firstName">Nombre</label>
+                  <input id="firstName" class="form-control" formControlName="firstName" autocomplete="given-name"
+                    [class.is-invalid]="form.controls.firstName.invalid && form.controls.firstName.touched" />
+                  <div class="invalid-feedback">Máximo 100 caracteres.</div>
+                </div>
+                <div class="col-sm-6">
+                  <label class="form-label" for="lastName">Apellido</label>
+                  <input id="lastName" class="form-control" formControlName="lastName" autocomplete="family-name"
+                    [class.is-invalid]="form.controls.lastName.invalid && form.controls.lastName.touched" />
+                  <div class="invalid-feedback">Máximo 100 caracteres.</div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="displayName">Nombre para mostrar</label>
+                  <input id="displayName" class="form-control" formControlName="displayName" autocomplete="nickname"
+                    [class.is-invalid]="form.controls.displayName.invalid && form.controls.displayName.touched" />
+                  <div class="invalid-feedback">Máximo 150 caracteres.</div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="avatarUrl">URL de la foto</label>
+                  <input id="avatarUrl" class="form-control" formControlName="avatarUrl" type="url" placeholder="https://…"
+                    [class.is-invalid]="form.controls.avatarUrl.invalid && form.controls.avatarUrl.touched" />
+                  <div class="invalid-feedback">Ingresa una URL que empiece por http:// o https://.</div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="email">Correo</label>
+                  <input id="email" class="form-control" [value]="current.email" disabled />
+                  <div class="form-text">El correo viene de tu proveedor de inicio de sesión y no se puede cambiar aquí.</div>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-end gap-2 mt-4">
+                <button class="btn btn-outline-secondary" type="button" [disabled]="saving() || form.pristine" (click)="resetForm()">
+                  Descartar
+                </button>
+                <button class="btn btn-primary" type="submit" [disabled]="saving() || form.pristine">
+                  @if (saving()) {
+                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                  }
+                  Guardar cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+</main>
