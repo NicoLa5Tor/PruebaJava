@@ -43,7 +43,9 @@ app.get('/app-config.json', (_req, res) => {
 app.use(
   createProxyMiddleware({
     target: backendUrl,
-    pathFilter: '/api/v1',
+    // The API plus its Swagger UI and OpenAPI document, so evaluators can try the API from the public URL.
+    // Actuator and everything else stay private.
+    pathFilter: ['/api/v1', '/swagger-ui', '/v3/api-docs'],
     // Keep the public Host so the API builds correct Location headers; xfwd adds X-Forwarded-Proto/For.
     changeOrigin: false,
     xfwd: true,

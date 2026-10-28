@@ -101,6 +101,23 @@
             </form>
           </div>
         </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+          <div class="card-body p-4">
+            <h2 class="h5 fw-semibold mb-1">Probar la API con Swagger</h2>
+            <p class="small text-body-secondary mb-3">
+              Copia un token de acceso de tu sesión (válido por 15 minutos) y pégalo en <strong>Authorize</strong> de
+              <a href="/swagger-ui/index.html" target="_blank" rel="noopener">Swagger UI</a>. Desde ahí el login no es
+              posible porque está protegido con Turnstile.
+            </p>
+            <button class="btn btn-outline-dark btn-sm" type="button" [disabled]="copying()" (click)="copyToken()">
+              <i class="bi bi-clipboard me-1" aria-hidden="true"></i>{{ tokenCopied() ? 'Token copiado' : 'Copiar token de acceso' }}
+            </button>
+            @if (tokenError(); as message) {
+              <div class="small text-danger mt-2">{{ message }}</div>
+            }
+          </div>
+        </div>
       </section>
     </div>
   }

@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { problemMessage } from '../../../../core/api/problem-message';
 import { AuthSessionService } from '../../../../core/auth/auth-session.service';
 import { ROLE_LABELS, STATUS_LABELS, displayNameOf } from '../../../../core/auth/auth.models';
@@ -15,7 +16,11 @@ import { AccountApiService } from '../../data-access/account-api.service';
 })
 export class AccountComponent {
   private readonly accountApi = inject(AccountApiService);
-  protected readonly user = inject(AuthSessionService).currentUser;
+  private readonly session = inject(AuthSessionService);
+  protected readonly user = this.session.currentUser;
+  protected readonly copying = signal(false);
+  protected readonly tokenCopied = signal(false);
+  protected readonly tokenError = signal<string | null>(null);
   protected readonly userName = computed(() => {
     const user = this.user();
     return user ? displayNameOf(user) : '';
@@ -68,5 +73,21 @@ export class AccountComponent {
         this.error.set(problemMessage(error));
       },
     });
+  }
+
+  /** Refreshes first so the copied token has its full 15 minutes; it is never stored anywhere else. */
+  protected async copyToken(): Promise<void> {
+    this.copying.set(true);
+    this.tokenError.set(null);
+    try {
+      const token = await firstValueFrom(this.session.refresh());
+      await navigator.clipboard.writeText(token);
+      this.tokenCopied.set(true);
+      setTimeout(() => this.tokenCopied.set(false), 3_000);
+    } catch {
+      this.tokenError.set('No fue posible copiar el token. Vuelve a iniciar sesión e inténtalo de nuevo.');
+    } finally {
+      this.copying.set(false);
+    }
   }
 }

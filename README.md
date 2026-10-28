@@ -2,6 +2,25 @@
 
 Prueba técnica Makers (parte práctica): API REST con Spring Boot y front-end Angular. Los usuarios solicitan préstamos indicando monto y plazo, los administradores los aprueban o rechazan, y cada usuario sigue el estado de sus préstamos en tiempo real.
 
+## Demo en línea
+
+**https://makers.norscale.dev**
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Usuario | `usuario@test.com` | `123` |
+| Administrador | `admin@test.com` | `123` |
+| Super administrador | `superadmin@test.com` | `123` |
+
+- El login está protegido con Cloudflare Turnstile: completa el check antes de pulsar **Ingresar**.
+- También puedes entrar con Google o Facebook (Logto de pruebas): la primera vez se crea una cuenta con rol de usuario.
+- **API / Swagger:** https://makers.norscale.dev/swagger-ui/index.html
+  1. Entra a la web.
+  2. Ve a **Mi cuenta → Copiar token de acceso**.
+  3. Pégalo en **Authorize**. El token dura 15 minutos.
+
+  El login directo desde Swagger no funciona porque exige el token de Turnstile.
+
 | Proyecto | Stack |
 |---|---|
 | `back/` | Java 21, Spring Boot 3.5 (Web, Data JPA, Security, Validation, Cache, WebFlux/Reactor), PostgreSQL 17, Flyway, EhCache 3, JWT |
@@ -21,7 +40,7 @@ npm install
 npm start                         # http://localhost:4200
 ```
 
-- Swagger UI: `http://localhost:8080/swagger-ui.html`. Usa `POST /api/v1/auth/login` y pega el `accessToken` en *Authorize*.
+- Swagger UI local: `http://localhost:8080/swagger-ui.html`. En local Turnstile está desactivado, así que puedes usar `POST /api/v1/auth/login` y pegar el `accessToken` en *Authorize*.
 - El servidor de desarrollo de Angular redirige `/api` al backend en el puerto 8080 (`proxy.conf.json`).
 
 ### Cuentas de demostración
