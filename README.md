@@ -15,11 +15,11 @@ Prueba técnica Makers (parte práctica): API REST con Spring Boot y front-end A
 - El login está protegido con Cloudflare Turnstile: completa el check antes de pulsar **Ingresar**.
 - También puedes entrar con Google o Facebook (Logto de pruebas): la primera vez se crea una cuenta con rol de usuario.
 - **API / Swagger:** https://makers.norscale.dev/swagger-ui/index.html
-  1. Entra a la web.
-  2. Ve a **Mi cuenta → Copiar token de acceso**.
-  3. Pégalo en **Authorize**. El token dura 15 minutos.
+  1. Entra a la web con la cuenta del rol que quieras probar: `usuario@test.com` para solicitar préstamos, `admin@test.com` para aprobar o rechazar, `superadmin@test.com` para gestionar usuarios.
+  2. En la barra superior ve a **Mi cuenta → Copiar token de acceso**.
+  3. En Swagger pulsa **Authorize** y pega el token tal cual, sin escribir `Bearer`. Dura 15 minutos; si expira, vuelve a copiarlo.
 
-  El login directo desde Swagger no funciona porque exige el token de Turnstile.
+  El login directo desde Swagger (`POST /auth/login`) no funciona en la demo porque exige el token de Turnstile.
 
 | Proyecto | Stack |
 |---|---|
