@@ -30,6 +30,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Behind the frontend's server and nginx: honour X-Forwarded-Proto/Host when building URLs (Location headers).
+  forward-headers-strategy: framework
+  shutdown: graceful
 
 management:
   endpoints:
@@ -57,6 +60,10 @@ auth:
     path: /api/v1/auth
     # Browsers accept Secure cookies on http://localhost; only disable this if you test over plain HTTP on another host.
     secure: ${AUTH_COOKIE_SECURE:true}
+  turnstile:
+    # Empty disables the check; set it in production together with the frontend's TURNSTILE_SITE_KEY.
+    secret-key: ${TURNSTILE_SECRET_KEY:}
+    verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
 
 app:
   seed:

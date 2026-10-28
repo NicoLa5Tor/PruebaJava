@@ -14,7 +14,9 @@ public final class AuthDtos {
 
     public record PasswordLoginRequest(
             @NotBlank @Email @Size(max = 254) String email,
-            @NotBlank @Size(max = 72) String password
+            @NotBlank @Size(max = 72) String password,
+            /** Cloudflare Turnstile token; required only when Turnstile is enabled. */
+            @Size(max = 2048) String turnstileToken
     ) {
     }
 

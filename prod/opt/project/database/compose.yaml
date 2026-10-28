@@ -1,0 +1,23 @@
+# PostgreSQL for the loans API. Not published: only containers on the "makers" network can reach it.
+name: makers-database
+
+services:
+  database:
+    image: postgres:17-alpine
+    container_name: makers-database
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ../../volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [makers]
+
+networks:
+  makers:
+    name: makers
+    external: true

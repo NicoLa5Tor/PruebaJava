@@ -1,0 +1,5 @@
+# Local testing only: docker compose -f compose.yaml -f compose.local.yaml up -d  ->  http://localhost:8088
+services:
+  nginx:
+    ports:
+      - "127.0.0.1:8088:80"

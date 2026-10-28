@@ -4,7 +4,7 @@ import com.example.backend.auth.domain.model.AccessToken;
 
 public interface AuthenticationUseCase {
 
-    IssuedTokens signInWithPassword(String email, String password);
+    IssuedTokens signInWithPassword(PasswordSignInCommand command);
 
     /** Signs in an existing account. Unknown identities are sent to {@link #register} instead of being auto-created. */
     IssuedTokens signInWithLogto(String idToken);
@@ -16,6 +16,10 @@ public interface AuthenticationUseCase {
     IssuedTokens refresh(String rawRefreshToken);
 
     void logout(String rawRefreshToken);
+
+    /** {@code humanToken} is the Turnstile token; {@code clientIp} feeds the brute-force limits. */
+    record PasswordSignInCommand(String email, String password, String humanToken, String clientIp) {
+    }
 
     record RegisterCommand(String idToken, String firstName, String lastName, String displayName) {
     }

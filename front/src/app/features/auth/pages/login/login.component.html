@@ -55,6 +55,12 @@
               </div>
             </div>
 
+            @if (turnstileSiteKey(); as siteKey) {
+              <div class="mb-3 d-flex justify-content-center">
+                <app-turnstile [siteKey]="siteKey" (tokenChange)="turnstileToken.set($event)" />
+              </div>
+            }
+
             <button class="btn btn-dark w-100 py-2" type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>

@@ -1,0 +1,25 @@
+# Spring Boot loans API. Not published: the frontend's SSR server is its only client (http://makers-backend:8080).
+name: makers-backend
+
+services:
+  backend:
+    image: nicoscale/backmakers:1.0.0
+    container_name: makers-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: makers-database
+      DB_PORT: 5432
+      SERVER_PORT: 8080
+      # Served over HTTPS by Cloudflare, so the refresh cookie must be Secure.
+      AUTH_COOKIE_SECURE: "true"
+    networks: [makers]
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+networks:
+  makers:
+    name: makers
+    external: true

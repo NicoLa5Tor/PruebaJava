@@ -34,9 +34,14 @@ export class AuthSessionService {
     return roles.some((role) => this.hasRole(role));
   }
 
-  async signInWithPassword(email: string, password: string): Promise<void> {
+  /** `turnstileToken` is required by the backend only when Turnstile is enabled there. */
+  async signInWithPassword(email: string, password: string, turnstileToken: string | null = null): Promise<void> {
     const tokens = await firstValueFrom(
-      this.api.post<AccessTokenResponse>('auth/login', { email, password }, { withCredentials: true }),
+      this.api.post<AccessTokenResponse>(
+        'auth/login',
+        { email, password, turnstileToken },
+        { withCredentials: true },
+      ),
     );
     await this.startSession(tokens);
   }

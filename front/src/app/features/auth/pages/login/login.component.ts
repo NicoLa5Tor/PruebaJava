@@ -1,16 +1,18 @@
 import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { problemMessage } from '../../../../core/api/problem-message';
 import { AuthSessionService } from '../../../../core/auth/auth-session.service';
 import { homeUrl } from '../../../../core/auth/auth.guards';
 import { LogtoAuthService } from '../../../../core/auth/logto-auth.service';
+import { RuntimeConfigService } from '../../../../core/config/runtime-config.service';
+import { TurnstileComponent } from '../../../../shared/ui/turnstile/turnstile.component';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, TurnstileComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,6 +27,9 @@ export class LoginComponent {
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly showPassword = signal(false);
+  protected readonly turnstileSiteKey = inject(RuntimeConfigService).turnstileSiteKey;
+  protected readonly turnstileToken = signal<string | null>(null);
+  private readonly turnstile = viewChild(TurnstileComponent);
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
     password: ['', [Validators.required, Validators.maxLength(72)]],
@@ -35,16 +40,21 @@ export class LoginComponent {
       this.form.markAllAsTouched();
       return;
     }
+    if (this.turnstileSiteKey() && !this.turnstileToken()) {
+      this.error.set('Completa la verificación de seguridad.');
+      return;
+    }
     const { email, password } = this.form.getRawValue();
     this.submitting.set(true);
     this.error.set(null);
     try {
-      await this.session.signInWithPassword(email.trim(), password);
+      await this.session.signInWithPassword(email.trim(), password, this.turnstileToken());
       await this.router.navigateByUrl(homeUrl(this.session));
     } catch (error: unknown) {
       const invalidCredentials = error instanceof HttpErrorResponse && error.status === HttpStatusCode.Unauthorized;
       this.error.set(invalidCredentials ? 'Correo o contraseña incorrectos.' : problemMessage(error));
       this.form.controls.password.reset();
+      this.turnstile()?.reset();
     } finally {
       this.submitting.set(false);
     }

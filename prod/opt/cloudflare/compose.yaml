@@ -1,0 +1,17 @@
+# Cloudflare tunnel: the only way in from the internet. Outbound connection only, no open ports on the server.
+# In the Cloudflare dashboard, point the tunnel's public hostname to the service http://makers-nginx:80
+name: makers-cloudflare
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2025.10.0
+    container_name: makers-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    env_file: .env
+    networks: [makers]
+
+networks:
+  makers:
+    name: makers
+    external: true

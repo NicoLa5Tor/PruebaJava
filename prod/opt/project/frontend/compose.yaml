@@ -1,0 +1,22 @@
+# Angular SSR server (BFF): renders the app and proxies /api/v1 to the backend over the private network.
+name: makers-frontend
+
+services:
+  frontend:
+    image: nicoscale/frontmakers:1.0.0
+    container_name: makers-frontend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BACKEND_URL: http://makers-backend:8080
+      PORT: 4000
+    networks: [makers]
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+networks:
+  makers:
+    name: makers
+    external: true

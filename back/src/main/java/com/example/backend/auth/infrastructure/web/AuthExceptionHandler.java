@@ -2,10 +2,12 @@ package com.example.backend.auth.infrastructure.web;
 
 import com.example.backend.auth.domain.exception.AuthenticationException;
 import com.example.backend.auth.domain.exception.RegistrationRequiredException;
+import com.example.backend.auth.domain.exception.TooManyAttemptsException;
 import com.example.backend.shared.infrastructure.web.Problems;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,16 @@ class AuthExceptionHandler {
     ResponseEntity<ProblemDetail> handleAuthentication(AuthenticationException exception, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Problems.of(HttpStatus.UNAUTHORIZED, "Authentication failed", exception.getMessage(), request));
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    ResponseEntity<ProblemDetail> handleTooManyAttempts(TooManyAttemptsException exception, HttpServletRequest request) {
+        long retryAfterSeconds = Math.max(1, exception.getRetryAfter().toSeconds());
+        ProblemDetail detail = Problems.of(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts", exception.getMessage(), request);
+        detail.setProperty("retryAfterSeconds", retryAfterSeconds);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds))
+                .body(detail);
     }
 
     @ExceptionHandler(RegistrationRequiredException.class)

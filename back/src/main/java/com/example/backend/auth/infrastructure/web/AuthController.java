@@ -2,12 +2,14 @@ package com.example.backend.auth.infrastructure.web;
 
 import com.example.backend.auth.application.port.in.AuthenticationUseCase;
 import com.example.backend.auth.application.port.in.AuthenticationUseCase.IssuedTokens;
+import com.example.backend.auth.application.port.in.AuthenticationUseCase.PasswordSignInCommand;
 import com.example.backend.auth.infrastructure.config.AuthProperties;
 import com.example.backend.auth.infrastructure.web.dto.AuthDtos.LogtoSignInRequest;
 import com.example.backend.auth.infrastructure.web.dto.AuthDtos.PasswordLoginRequest;
 import com.example.backend.auth.infrastructure.web.dto.AuthDtos.RegisterRequest;
 import com.example.backend.auth.infrastructure.web.dto.AuthDtos.TokenResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import org.springframework.http.HttpHeaders;
@@ -32,8 +34,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> signInWithPassword(@Valid @RequestBody PasswordLoginRequest request) {
-        return withRefreshCookie(authentication.signInWithPassword(request.email(), request.password()));
+    public ResponseEntity<TokenResponse> signInWithPassword(@Valid @RequestBody PasswordLoginRequest request,
+                                                            HttpServletRequest httpRequest) {
+        return withRefreshCookie(authentication.signInWithPassword(new PasswordSignInCommand(
+                request.email(), request.password(), request.turnstileToken(), ClientAddress.of(httpRequest))));
     }
 
     @PostMapping("/logto")

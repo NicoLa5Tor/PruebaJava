@@ -36,6 +36,17 @@ Las crea el seed al arrancar si `SEED_DEMO_USERS=true` (valor por defecto). La p
 
 `ADMIN_EMAIL` define además un super administrador real, que entra con Logto (Google/Facebook). Si se configura `SUPER_ADMIN_PASSWORD`, también puede entrar con contraseña.
 
+## Producción
+
+```
+Internet ─▶ Cloudflare Tunnel ─▶ nginx ─▶ Angular SSR (BFF) ─▶ API Spring Boot ─▶ PostgreSQL
+```
+
+- El front corre con **Angular SSR**. Su servidor Node renderiza la app y hace de BFF: reenvía `/api/v1/**` al backend por una red Docker interna, así que **la API no se expone a internet**.
+- Ningún contenedor publica puertos: la única entrada es el tunnel de Cloudflare.
+- Imágenes: `nicoscale/backmakers:1.0.0` y `nicoscale/frontmakers:1.0.0`.
+- Los compose por servicio y la guía de despliegue (incluido Turnstile) están en [`prod/opt`](prod/opt/README.md).
+
 ## Arquitectura (hexagonal)
 
 El backend está organizado por módulos (`user`, `auth`, `loan`, más `shared`). Cada módulo tiene tres capas y las dependencias solo apuntan hacia el dominio:

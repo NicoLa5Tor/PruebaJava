@@ -4,6 +4,7 @@ import com.example.backend.auth.application.port.in.AuthenticationUseCase;
 import com.example.backend.auth.application.port.out.AccessTokenIssuerPort;
 import com.example.backend.auth.application.port.out.ExternalIdentityVerifierPort;
 import com.example.backend.auth.application.port.out.ExternalIdentityVerifierPort.ExternalIdentity;
+import com.example.backend.auth.application.port.out.HumanVerificationPort;
 import com.example.backend.auth.application.port.out.RefreshTokenRepositoryPort;
 import com.example.backend.auth.domain.exception.AuthenticationException;
 import com.example.backend.auth.domain.exception.RegistrationRequiredException;
@@ -30,33 +31,52 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService implements AuthenticationUseCase {
     private static final SecureRandom RANDOM = new SecureRandom();
     static final String INVALID_CREDENTIALS = "Invalid email or password.";
+    static final String HUMAN_CHECK_FAILED = "The security check failed. Please try again.";
 
     private final UserRepositoryPort users;
     private final PasswordHasherPort passwordHasher;
     private final RefreshTokenRepositoryPort refreshTokens;
     private final ExternalIdentityVerifierPort identityVerifier;
     private final AccessTokenIssuerPort tokenIssuer;
+    private final HumanVerificationPort humanVerification;
+    private final LoginThrottle throttle;
     private final Clock clock;
 
     public AuthenticationService(UserRepositoryPort users, PasswordHasherPort passwordHasher,
                                  RefreshTokenRepositoryPort refreshTokens, ExternalIdentityVerifierPort identityVerifier,
-                                 AccessTokenIssuerPort tokenIssuer, Clock clock) {
+                                 AccessTokenIssuerPort tokenIssuer, HumanVerificationPort humanVerification,
+                                 LoginThrottle throttle, Clock clock) {
         this.users = users;
         this.passwordHasher = passwordHasher;
         this.refreshTokens = refreshTokens;
         this.identityVerifier = identityVerifier;
         this.tokenIssuer = tokenIssuer;
+        this.humanVerification = humanVerification;
+        this.throttle = throttle;
         this.clock = clock;
     }
 
+    /**
+     * Order matters: the throttle runs first so a locked-out attacker cannot even spend Turnstile verifications,
+     * then the bot check, then the password. Failures count towards the limits; a success clears the account's.
+     */
     @Override
-    public IssuedTokens signInWithPassword(String email, String password) {
-        Optional<User> found = users.findByEmail(User.normalizeEmail(email));
+    public IssuedTokens signInWithPassword(PasswordSignInCommand command) {
+        String email = User.normalizeEmail(command.email());
+        throttle.checkAllowed(email, command.clientIp());
+        if (humanVerification.isEnabled() && !humanVerification.verify(command.humanToken(), command.clientIp())) {
+            throw new AuthenticationException(HUMAN_CHECK_FAILED);
+        }
+        Optional<User> found = users.findByEmail(email);
         // Always hash, even for unknown emails, so timing does not reveal which accounts exist.
-        boolean matches = passwordHasher.matches(password, found.map(User::getPasswordHash).orElse(null));
-        User user = found.filter(candidate -> matches)
-                .orElseThrow(() -> new AuthenticationException(INVALID_CREDENTIALS));
+        boolean matches = passwordHasher.matches(command.password(), found.map(User::getPasswordHash).orElse(null));
+        if (found.isEmpty() || !matches) {
+            throttle.recordFailure(email, command.clientIp());
+            throw new AuthenticationException(INVALID_CREDENTIALS);
+        }
+        User user = found.get();
         ensureActive(user);
+        throttle.recordSuccess(email);
         return issueTokens(user);
     }
 

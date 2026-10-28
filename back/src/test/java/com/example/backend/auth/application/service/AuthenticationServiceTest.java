@@ -12,9 +12,12 @@ import static org.mockito.Mockito.when;
 
 import com.example.backend.auth.application.port.in.AuthenticationUseCase.IssuedTokens;
 import com.example.backend.auth.application.port.out.AccessTokenIssuerPort;
+import com.example.backend.auth.application.port.in.AuthenticationUseCase.PasswordSignInCommand;
 import com.example.backend.auth.application.port.out.ExternalIdentityVerifierPort;
+import com.example.backend.auth.application.port.out.HumanVerificationPort;
 import com.example.backend.auth.application.port.out.RefreshTokenRepositoryPort;
 import com.example.backend.auth.domain.exception.AuthenticationException;
+import com.example.backend.auth.domain.exception.TooManyAttemptsException;
 import com.example.backend.auth.domain.model.AccessToken;
 import com.example.backend.auth.domain.model.RefreshToken;
 import com.example.backend.user.application.port.out.PasswordHasherPort;
@@ -43,12 +46,14 @@ class AuthenticationServiceTest {
     @Mock private RefreshTokenRepositoryPort refreshTokens;
     @Mock private ExternalIdentityVerifierPort identityVerifier;
     @Mock private AccessTokenIssuerPort tokenIssuer;
+    @Mock private HumanVerificationPort humanVerification;
     private AuthenticationService service;
 
     @BeforeEach
     void setUp() {
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         service = new AuthenticationService(users, passwordHasher, refreshTokens, identityVerifier, tokenIssuer,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                humanVerification, new LoginThrottle(clock), clock);
         lenient().when(tokenIssuer.issue(any())).thenReturn(new AccessToken("access", 900));
         lenient().when(tokenIssuer.refreshTokenTtl()).thenReturn(Duration.ofDays(14));
     }
@@ -59,7 +64,7 @@ class AuthenticationServiceTest {
         when(users.findByEmail("usuario@test.com")).thenReturn(Optional.of(user));
         when(passwordHasher.matches("123", "hash")).thenReturn(true);
 
-        IssuedTokens tokens = service.signInWithPassword("  Usuario@Test.com ", "123");
+        IssuedTokens tokens = service.signInWithPassword(login("  Usuario@Test.com ", "123"));
 
         assertThat(tokens.accessToken().value()).isEqualTo("access");
         assertThat(tokens.refreshToken()).isNotBlank();
@@ -75,7 +80,7 @@ class AuthenticationServiceTest {
         when(users.findByEmail("usuario@test.com")).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
         when(passwordHasher.matches("bad", "hash")).thenReturn(false);
 
-        assertThatThrownBy(() -> service.signInWithPassword("usuario@test.com", "bad"))
+        assertThatThrownBy(() -> service.signInWithPassword(login("usuario@test.com", "bad")))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessage(AuthenticationService.INVALID_CREDENTIALS);
         verify(refreshTokens, never()).save(any());
@@ -85,7 +90,7 @@ class AuthenticationServiceTest {
     void unknownEmailStillHashesAndGetsTheSameMessage() {
         when(users.findByEmail("nobody@test.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.signInWithPassword("nobody@test.com", "123"))
+        assertThatThrownBy(() -> service.signInWithPassword(login("nobody@test.com", "123")))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessage(AuthenticationService.INVALID_CREDENTIALS);
         verify(passwordHasher).matches(eq("123"), isNull());
@@ -96,7 +101,7 @@ class AuthenticationServiceTest {
         when(users.findByEmail("usuario@test.com")).thenReturn(Optional.of(user(UserStatus.INACTIVE)));
         when(passwordHasher.matches("123", "hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.signInWithPassword("usuario@test.com", "123"))
+        assertThatThrownBy(() -> service.signInWithPassword(login("usuario@test.com", "123")))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("inactive");
     }
@@ -122,6 +127,35 @@ class AuthenticationServiceTest {
         when(refreshTokens.findByTokenHash(AuthenticationService.hash("raw"))).thenReturn(Optional.of(expired));
 
         assertThatThrownBy(() -> service.refresh("raw")).isInstanceOf(AuthenticationException.class);
+    }
+
+    @Test
+    void repeatedFailuresLockTheAccountTemporarily() {
+        when(users.findByEmail("usuario@test.com")).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
+        when(passwordHasher.matches("bad", "hash")).thenReturn(false);
+        for (int attempt = 0; attempt < LoginThrottle.MAX_FAILURES_PER_ACCOUNT; attempt++) {
+            assertThatThrownBy(() -> service.signInWithPassword(login("usuario@test.com", "bad")))
+                    .isInstanceOf(AuthenticationException.class);
+        }
+
+        assertThatThrownBy(() -> service.signInWithPassword(login("usuario@test.com", "bad")))
+                .isInstanceOf(TooManyAttemptsException.class);
+        verify(passwordHasher, org.mockito.Mockito.times(LoginThrottle.MAX_FAILURES_PER_ACCOUNT)).matches(any(), any());
+    }
+
+    @Test
+    void enabledTurnstileRejectsMissingOrInvalidTokensBeforeCheckingThePassword() {
+        when(humanVerification.isEnabled()).thenReturn(true);
+        when(humanVerification.verify(null, "203.0.113.7")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.signInWithPassword(login("usuario@test.com", "123")))
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessage(AuthenticationService.HUMAN_CHECK_FAILED);
+        verify(passwordHasher, never()).matches(any(), any());
+    }
+
+    private static PasswordSignInCommand login(String email, String password) {
+        return new PasswordSignInCommand(email, password, null, "203.0.113.7");
     }
 
     private static User user(UserStatus status) {

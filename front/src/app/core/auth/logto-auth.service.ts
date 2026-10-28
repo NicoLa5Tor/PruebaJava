@@ -11,7 +11,14 @@ type SocialProvider = 'google' | 'facebook';
 export class LogtoAuthService {
   private readonly session = inject(AuthSessionService);
   private readonly router = inject(Router);
-  private readonly client = new LogtoClient({ ...inject(LOGTO_SETTINGS), scopes: [UserScope.Email] });
+  private readonly settings = inject(LOGTO_SETTINGS);
+  private clientInstance: LogtoClient | null = null;
+
+  /** Created on first use: the SDK needs browser storage, and the login page is also rendered on the server. */
+  private get client(): LogtoClient {
+    this.clientInstance ??= new LogtoClient({ ...this.settings, scopes: [UserScope.Email] });
+    return this.clientInstance;
+  }
 
   async signIn(provider?: SocialProvider): Promise<void> {
     await this.client.signIn({
